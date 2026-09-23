@@ -1,0 +1,38 @@
+{
+  "about": "Texture slots for THE THIRD LAMP vertical slice. Each 'name' is loaded from Assets/_Project/Resources/ThirdLamp/Textures/<name>.png if present; otherwise the procedural placeholder in Scripts/World/Tex.cs is used. Generate with PixelLab (or any tool), keep the size/aspect, set Texture Type = Default, Read/Write off, Wrap Repeat for tiling surfaces. Style for everything: grounded early-2000s Greek domestic realism, muted tungsten palette, slightly degraded, no fantasy colour, no text unless specified.",
+  "style_reference": "realistic, low-saturation, warm tungsten indoor light, early 2000s, slightly worn, photographic texture feel rendered at low resolution",
+  "slots": [
+    { "name": "painting_eight", "size": [320, 240], "tiling": false, "prompt": "19th-century unsigned oil painting, dusk landscape in Greece, eight robed figures seen from behind standing in a loose semicircle around a small dark spring pool, cypress trees on the left and right horizon, low olive-green hills, ochre sky darkening upward, a grey rock at lower right with a tiny painted mark (circle above a vertical line above a triangle), aged varnish, fine craquelure", "notes": "Master image. Figures must all face the water, backs to the viewer." },
+    { "name": "painting_nine", "size": [320, 240], "tiling": false, "prompt": "IDENTICAL to painting_eight, pixel for pixel, except: add one small pale robed figure far in the background at the tree line on the right, between the cypresses, facing OUT of the painting toward the viewer, pale face, two dark dots for eyes", "notes": "Make this by editing/inpainting painting_eight, not by regenerating. Every other pixel must match or the photo comparison breaks." },
+    { "name": "icon_027", "size": [128, 170], "tiling": false, "prompt": "fragment of a 15th-century Byzantine egg-tempera icon on wood, gold-leaf background, an unidentified saint with a halo in a dark red robe, dark red border band, upper-right corner broken off showing raw wood, and a tiny cream-coloured mark painted into the lower-left border: a circle above a vertical line above a triangle", "notes": "The mark must be small, near UV (0.04, 0.13)." },
+    { "name": "disc_014", "size": [128, 128], "tiling": false, "prompt": "top-down view of an ancient bronze votive disc, green patina in the grooves, concentric ring and radiating lines engraved, near the top rim a very fine incised mark: a circle above a vertical line above a triangle", "notes": "Circular object centred in the square; the cylinder cap samples it planar." },
+    { "name": "symbol_chalk", "size": [256, 256], "tiling": false, "prompt": "a rough white chalk drawing on a dark grey plaster/stone wall: a circle, below it a vertical line, below that a triangle, drawn in one hand, smudged", "notes": "Only visible under the Third Lamp." },
+    { "name": "symbol_large", "size": [512, 512], "tiling": false, "prompt": "enormous ancient carving on a cut-stone wall in an underground hall: a circle above a vertical line above a triangle, ochre pigment in the grooves, lit faintly by an oil flame", "notes": "End wall of the impossible corridor." },
+    { "name": "note_paper", "size": [128, 160], "tiling": false, "prompt": "a sheet of cream lined paper with blue-ink cursive handwriting (illegible at this resolution), slightly creased", "notes": "World texture only; the readable text is drawn by the UI." },
+    { "name": "newspaper", "size": [128, 160], "tiling": false, "prompt": "folded Greek broadsheet newspaper page, 2002, three columns of small grey text, one black-and-white photo, masthead blurred", "notes": "No real newspaper names." },
+    { "name": "family_photo", "size": [128, 96], "tiling": false, "prompt": "faded 1970s colour snapshot of four people on a Greek beach, washed-out warm tones", "notes": "Hallway frame; also used for the postcard." },
+    { "name": "books", "size": [128, 128], "tiling": true, "prompt": "front view of four shelves of old hardback books, cloth spines in muted reds, blues, greens and browns, a few gilt titles", "notes": "Tiles on bookshelf fronts." },
+    { "name": "wallpaper", "size": [128, 128], "tiling": true, "prompt": "seamless 1970s Greek study wallpaper, faded olive-beige with thin vertical stripes and a small diamond motif, slightly stained", "notes": "Seamless." },
+    { "name": "plaster", "size": [128, 128], "tiling": true, "prompt": "seamless off-white interior plaster wall, subtle unevenness", "notes": "Seamless." },
+    { "name": "plaster_ext", "size": [128, 128], "tiling": true, "prompt": "seamless whitewashed exterior wall of a Greek house, rain streaks near the bottom", "notes": "Seamless." },
+    { "name": "ceiling", "size": [128, 128], "tiling": true, "prompt": "seamless painted plaster ceiling, off-white", "notes": "Seamless." },
+    { "name": "wood_floor", "size": [256, 256], "tiling": true, "prompt": "seamless worn honey-brown wooden floorboards, top-down", "notes": "Seamless." },
+    { "name": "wood_dark", "size": [256, 256], "tiling": true, "prompt": "seamless dark walnut wood, furniture grain", "notes": "Seamless." },
+    { "name": "wood_door", "size": [256, 256], "tiling": true, "prompt": "seamless painted brown door wood, planks", "notes": "Seamless." },
+    { "name": "tile_kitchen", "size": [128, 128], "tiling": true, "prompt": "seamless cream ceramic floor tiles 4x4 with grey grout, 1980s Greek kitchen", "notes": "Seamless." },
+    { "name": "tile_bath", "size": [128, 128], "tiling": true, "prompt": "seamless pale blue bathroom tiles 4x4 with grey grout", "notes": "Seamless." },
+    { "name": "stone", "size": [256, 256], "tiling": true, "prompt": "seamless ancient cut-stone block wall, grey, irregular courses, mortar", "notes": "Boundary walls and the impossible corridor." },
+    { "name": "dirt", "size": [256, 256], "tiling": true, "prompt": "seamless dry Attic hillside ground at night, packed earth, pebbles, dry grass tufts, top-down", "notes": "Seamless." },
+    { "name": "gravel", "size": [128, 128], "tiling": true, "prompt": "seamless grey gravel driveway, top-down", "notes": "Seamless." },
+    { "name": "asphalt", "size": [64, 64], "tiling": true, "prompt": "seamless old dark asphalt", "notes": "Seamless." },
+    { "name": "rug", "size": [128, 96], "tiling": false, "prompt": "top-down Greek woven rug, deep red field, gold border with a meander (Greek key) band", "notes": "" },
+    { "name": "fabric", "size": [64, 64], "tiling": true, "prompt": "seamless brown upholstery fabric, 1970s sofa", "notes": "Seamless." },
+    { "name": "crt_on", "size": [128, 96], "tiling": false, "prompt": "late-1990s desktop computer screen seen on a CRT: teal desktop, one grey dialog window with a navy title bar, faint scanlines", "notes": "Point filtering. No real OS branding." },
+    { "name": "crt_off", "size": [32, 24], "tiling": false, "prompt": "dark grey-green glass of a switched-off CRT monitor", "notes": "" },
+    { "name": "tv_off", "size": [32, 24], "tiling": false, "prompt": "black glass of a switched-off CRT television with a faint reflection", "notes": "" },
+    { "name": "night_sky_glow", "size": [8, 64], "tiling": false, "prompt": "vertical gradient: dim orange city light pollution at the bottom fading to near-black navy at the top", "notes": "Clamp wrap." }
+  ],
+  "sprites_future": [
+    { "name": "figure_billboard", "prompt": "a tall thin man in a dark coat standing still, facing the viewer, arms at sides, face pale and indistinct, full body, transparent background", "notes": "Optional replacement for the primitive apparition figures." }
+  ]
+}
