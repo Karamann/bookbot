@@ -34,6 +34,31 @@ namespace ThirdLamp
             }
             Quad("GreatMark", new Vector3(61.99f, 3.6f, 7f), new Vector2(5f, 5f), Vector3.right, Mats.Lit("symbol_large", Color.white, 0.05f));
             PointLight("FarGlow", new Vector3(57f, 3f, 7f), new Color(0.8f, 0.42f, 0.18f), 0.7f, 14f, false);
+
+            // a carved procession running the length of both walls, walking toward the mark
+            if (Tex.Exists("frieze_carved"))
+            {
+                var frieze = Mats.Lit("frieze_carved", new Color(0.8f, 0.78f, 0.74f), 0.05f, 25f, 1f);
+                Quad("FriezeS", new Vector3(37f, 5.9f, 3.005f), new Vector2(50f, 1f), Vector3.back, frieze);
+                Quad("FriezeN", new Vector3(37f, 5.9f, 10.995f), new Vector2(50f, 1f), Vector3.forward, frieze);
+            }
+            // eight small clay figures on plinths, all turned toward whoever walks past
+            for (int i = 0; i < 8; i++)
+            {
+                float x = 17f + i * 5f, z = i % 2 == 0 ? 4.9f : 9.1f;
+                TexBox("Plinth", new Vector3(x, 0.3f, z), new Vector3(0.45f, 0.6f, 0.45f), "stone", 1f, 0.05f);
+                Sprite("ClayFigure", "clay_figurine", new Vector3(x, 0.6f, z), 0.7f, true);
+            }
+            // candles left at the foot of the mark, and something dragged toward it
+            for (int i = 0; i < 3; i++)
+            {
+                var c = Sprite("Candles", "offering_candles", new Vector3(61.4f, 0f, 5.6f + i * 1.4f), 0.45f, true);
+                if (c == null) break;
+                var flame = PointLight("CandleLight", new Vector3(61.2f, 0.45f, 5.6f + i * 1.4f), new Color(1f, 0.6f, 0.3f), 0.6f, 4f, i == 1);
+                flame.gameObject.AddComponent<FlameFlicker>();
+            }
+            for (int i = 0; i < 6; i++)
+                Decal("floor_drag_marks", new Vector3(30f + i * 5.2f, 0.012f, 7f + (i % 2 == 0 ? -0.4f : 0.5f)), new Vector2(2.2f, 2.2f), Vector3.down, 90f + i * 13f, 0.9f);
             MindOnly(cur.gameObject);
 
             Game.Lighting.corridorBounds = new[]
@@ -94,6 +119,7 @@ namespace ThirdLamp
             beam.range = 14f;
             beam.color = new Color(1f, 0.9f, 0.72f);
             beam.shadows = LightShadows.Soft;
+            if (Tex.Exists("torch_cookie")) beam.cookie = Tex.Get("torch_cookie");
             beam.enabled = false;
             var torch = go.AddComponent<Torch>();
             torch.beam = beam;

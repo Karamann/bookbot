@@ -32,9 +32,9 @@ built-in pipeline, and a lighter IMGUI grain and vignette overlay is always on.
 For standalone builds, run **Tools › The Third Lamp › Include Runtime Shaders In Builds** once.
 
 **Screenshots:** **Tools › The Third Lamp › Capture Screenshots** plays the slice, skips the intro
-and walks the player through 16 fixed viewpoints (grounds, every room, and the Third Lamp
-corridor). It saves what the Game view shows, HUD included, under several lighting states
-(`asfound`, `lights`, `torch`, `lamp`) to `Screenshots/` in the project root, then stops Play mode.
+and walks the player through fixed viewpoints (grounds, every room, the later-night
+events, and the Third Lamp corridor). It saves what the Game view shows, HUD included, under several lighting states
+(`asfound`, `lights`, `torch`, `scare`, `lamp`) to `Screenshots/` in the project root, then stops Play mode.
 Set the Game view to 1920×1080 first, and leave the mouse still while it runs.
 
 ## Controls
@@ -149,15 +149,44 @@ window figure and a Mind-only doorway in the study appear. Curiosity makes the n
 
 ## Art and audio
 
-The PixelLab MCP wasn't reachable from the build environment (its network policy blocked
-`api.pixellab.ai`), so every texture is a **procedural placeholder** behind a named slot, and
-every sound is synthesised. To replace them:
+All 81 texture slots are **PixelLab** art, listed with their prompts in
+`Assets/_Project/Art/asset_manifest.json` and stored in `Resources/ThirdLamp/Textures/`. The
+target look is grounded, grainy early-2000s Greek domestic realism in dim tungsten tones.
+Import settings come from the manifest automatically (`Editor/ThirdLampTextureImporter.cs`).
+Each slot has a `kind`:
 
-- Textures: generate the slots listed in `Assets/_Project/Art/asset_manifest.json` (it includes
-  the prompts) and save them to `Assets/_Project/Resources/ThirdLamp/Textures/<name>.png`.
-- Audio: drop clips into `Assets/_Project/Resources/ThirdLamp/Audio/<name>`.
+- `tex`: surface textures and prints.
+- `decal`: alpha stains, damp, mould, cobwebs, a handprint, footprints and window grime.
+- `sprite`: cut-outs for foliage, the ghosts and the clay figures.
+- `cookie`: light cookies for the torch and the moonlight through the windows.
 
-No code changes are needed either way.
+Run **Tools › The Third Lamp › Reimport Textures** after editing the manifest.
+
+The villa is still built from code (`VillaBuilder*`), now with more detail:
+
+- **Architecture:** skirting, door casings, glazed windows with net curtains and shutters, and
+  panelled doors.
+- **Rooms:** hollow bath, panelled kitchen units, textured fridge, TV and CRT, framed prints, and
+  real shelves.
+- **Outside:** sprite olive trees, cypresses and weeds, a night backdrop, and grime decals in
+  every room (`VillaBuilder.Kit.cs`).
+- **Ghosts:** PixelLab cut-outs that always turn to face the player.
+- **Fallbacks:** anything whose slot is missing falls back to the old primitives.
+
+Every sound is still synthesised. To replace sounds, drop clips into
+`Assets/_Project/Resources/ThirdLamp/Audio/<name>`; no code changes are needed.
+
+**Later-night events** (all perception-gated, silent, and missable):
+
+- The TV clicks on to static in an empty room and dies once you've looked at it.
+- A kitchen cupboard creaks open, with one of the corridor's clay figures inside.
+- A pale robed figure stands in the garden, seen only out of the corner of your eye.
+- Wet bare footprints lead to the basement door.
+- The faces are scratched out of the hall photo, and later out of the wedding portrait.
+- A chalk mark appears in the kitchen without the lamp.
+
+Bulbs also flicker more often as perception rises. Scares tighten the frame briefly
+(`UrpPostFx.Pulse`).
 
 ## Status and scope
 

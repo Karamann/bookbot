@@ -35,6 +35,7 @@ namespace ThirdLamp
                 {
                     seen = true;
                     Game.State.Set("saw_" + id);
+                    UrpPostFx.Pulse(0.8f);
                     Game.Perception.Add(perception, "apparition_" + id);
                 }
             }

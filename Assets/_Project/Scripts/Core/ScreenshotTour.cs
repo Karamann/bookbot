@@ -18,7 +18,7 @@ namespace ThirdLamp
         public const string PendingKey = "ThirdLamp.ScreenshotTour.Pending";
         public static string OutputDir => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Screenshots"));
 
-        enum Light3 { AsFound, Lights, Torch, Lamp }
+        enum Light3 { AsFound, Lights, Torch, Lamp, Scare }
 
         struct Shot
         {
@@ -50,12 +50,20 @@ namespace ThirdLamp
             new Shot("10_study_desk", new Vector3(-1.2f, 0, 10.5f), -24f, -8f, Light3.Lights, Light3.Torch),
             new Shot("11_bathroom_mirror", new Vector3(1.2f, 0, 10f), 90f, 0f, Light3.Lights, Light3.Torch),
             new Shot("12_storage", new Vector3(4.2f, 0, 8.7f), 35f, -6f, Light3.Lights, Light3.Torch),
+            // later in the night: the perception events forced on, room lights on
+            new Shot("13_scare_tv", new Vector3(-7.2f, 0, 3.4f), 95f, -4f, Light3.Scare),
+            new Shot("14_scare_garden_window", new Vector3(-4.6f, 0, 2.9f), -92f, 0f, Light3.Scare),
+            new Shot("15_scare_cupboard", new Vector3(5.2f, 0, 3.2f), -26f, -14f, Light3.Scare),
+            new Shot("16_scare_footprints", new Vector3(-4.3f, 0, 7f), 90f, -24f, Light3.Scare, Light3.Torch),
+            new Shot("17_scare_hall_photo", new Vector3(0.2f, 0, 7.3f), 180f, 0f, Light3.Scare),
+            new Shot("18_scare_portrait", new Vector3(-2.6f, 0, 6.5f), 0f, 0f, Light3.Scare),
+            new Shot("19_scare_kitchen_chalk", new Vector3(5.2f, 0, 2.2f), 100f, 0f, Light3.Scare),
             // the Third Lamp: lamp lit, lights and torch off. Kept last: leaving Mind inside the
             // corridor teleports the player back to the house.
-            new Shot("13_lamp_living", new Vector3(-4.5f, 0, 1.2f), -22f, 0f, Light3.Lamp),
-            new Shot("14_lamp_hallway", new Vector3(-2f, 0, 7f), 90f, 0f, Light3.Lamp),
-            new Shot("15_lamp_corridor", new Vector3(13f, 0, 7f), 90f, 4f, Light3.Lamp),
-            new Shot("16_lamp_great_mark", new Vector3(50f, 0, 7f), 90f, 3f, Light3.Lamp),
+            new Shot("20_lamp_living", new Vector3(-4.5f, 0, 1.2f), -22f, 0f, Light3.Lamp),
+            new Shot("21_lamp_hallway", new Vector3(-2f, 0, 7f), 90f, 0f, Light3.Lamp),
+            new Shot("22_lamp_corridor", new Vector3(13f, 0, 7f), 90f, 4f, Light3.Lamp),
+            new Shot("23_lamp_great_mark", new Vector3(50f, 0, 7f), 90f, 3f, Light3.Lamp),
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -96,10 +104,12 @@ namespace ThirdLamp
             int saved = 0;
             var written = new List<string>();
 
+            bool scaresForced = false;
             foreach (var shot in Shots)
             {
                 foreach (var look in shot.looks)
                 {
+                    if (look == Light3.Scare && !scaresForced) { ForceScares(); scaresForced = true; }
                     SetLights(look, asFound, torch, lamp);
                     Game.Player.Teleport(shot.feet, shot.yaw);
                     pitchField?.SetValue(Game.Player, shot.pitch);
@@ -124,11 +134,29 @@ namespace ThirdLamp
             EditorApplication.isPlaying = false;
         }
 
+        /// <summary>Puts every perception event into its "has happened" state, for review.</summary>
+        static void ForceScares()
+        {
+            foreach (var r in Game.World.Find("tv")?.GetComponentsInChildren<IParamReceiver>(true) ?? new IParamReceiver[0]) r.SetParam("on", 1f);
+            Game.World.Get<Openable>("kitchen_cabinet")?.SetOpen(true, true, true);
+            Game.World.Find("wet_footprints")?.SetActive(true);
+            Game.World.Find("chalk_reason_kitchen")?.SetActive(true);
+            Game.World.Get<MaterialStates>("hall_photo")?.SetState("scratched");
+            Game.World.Get<MaterialStates>("hall_portrait")?.SetState("scratched");
+            var garden = Game.World.Find("garden_figure");
+            if (garden != null)
+            {
+                var g = garden.GetComponent<Glimpse>();
+                if (g != null) g.enabled = false; // it would vanish the moment the tour looks at it
+                garden.SetActive(true);
+            }
+        }
+
         static void SetLights(Light3 look, List<string> asFound, Torch torch, OilLamp lamp)
         {
             Game.Lighting.SetPower(true);
             foreach (var g in Groups)
-                Game.Lighting.SetGroup(g, look == Light3.Lights || (look == Light3.AsFound && asFound.Contains(g)));
+                Game.Lighting.SetGroup(g, look == Light3.Lights || look == Light3.Scare || (look == Light3.AsFound && asFound.Contains(g)));
 
             bool torchOn = look == Light3.Torch;
             if (torch != null && torch.On != torchOn) torch.Set(torchOn);

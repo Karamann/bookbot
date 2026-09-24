@@ -153,6 +153,19 @@ namespace ThirdLamp
         }
     }
 
+    /// <summary>Brief tightening of the frame (vignette, exposure, fringing). Not replayed on load.</summary>
+    [Serializable]
+    public class PulseAction : EventAction
+    {
+        public float strength = 1f;
+        public PulseAction() { }
+        public PulseAction(float strength) { this.strength = strength; }
+        public override void Execute(bool restoring)
+        {
+            if (!restoring) UrpPostFx.Pulse(strength);
+        }
+    }
+
     [Serializable]
     public class SendSmsAction : EventAction
     {

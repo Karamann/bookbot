@@ -48,6 +48,23 @@ namespace ThirdLamp
         }
     }
 
+    /// <summary>Candle-like flicker for a point light.</summary>
+    public class FlameFlicker : MonoBehaviour
+    {
+        public float baseIntensity = 0.6f, amount = 0.3f, speed = 7f;
+        Light l;
+        float seed;
+
+        void Awake() { l = GetComponent<Light>(); seed = Random.value * 10f; }
+
+        void Update()
+        {
+            if (l == null) return;
+            float n = Mathf.PerlinNoise(Time.time * speed, seed);
+            l.intensity = baseIntensity + (n - 0.5f) * 2f * amount;
+        }
+    }
+
     /// <summary>The living-room TV. SetParam("on", 1) makes it hiss into static by itself.</summary>
     public class TvStatic : MonoBehaviour, IParamReceiver
     {

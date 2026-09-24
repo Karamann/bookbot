@@ -165,7 +165,7 @@ namespace ThirdLamp
         {
             var g = Group("Door_" + id, cur);
             g.localPosition = hinge;
-            mat = mat != null ? mat : Mats.Lit("wood_door", Color.white, 0.25f);
+            mat = mat != null ? mat : Tex.Exists("door_panelled") ? Mats.Lit("door_panelled", Color.white, 0.25f) : Mats.Lit("wood_door", Color.white, 0.25f);
             var slabPos = alongX ? new Vector3(width / 2f, 1.04f, 0f) : new Vector3(0f, 1.04f, width / 2f);
             var slabSize = alongX ? new Vector3(width - 0.02f, 2.08f, 0.05f) : new Vector3(0.05f, 2.08f, width - 0.02f);
             Box("Slab", slabPos, slabSize, mat, g);

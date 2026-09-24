@@ -146,6 +146,8 @@ namespace ThirdLamp
                 m.SetFloat("_ZWrite", 0f);
                 m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
                 m.SetOverrideTag("RenderType", "Transparent");
+                // stains, grime and glass must not throw shadows
+                m.SetShaderPassEnabled("ShadowCaster", false);
             }
             else
             {

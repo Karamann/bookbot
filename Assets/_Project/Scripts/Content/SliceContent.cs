@@ -84,7 +84,7 @@ namespace ThirdLamp
 
             d.Register(NarrativeEvent.Create("painting_discovered")
                 .When(new FlagCondition("painting_changed"), new LookingAtCondition("painting_031", true, 3.5f, 2f))
-                .Do(new SetFlagAction("saw_ninth"), new AddPerceptionAction(3, "saw_ninth")));
+                .Do(new SetFlagAction("saw_ninth"), new AddPerceptionAction(3, "saw_ninth"), new PulseAction(0.7f)));
 
             // ---------- power ----------
             d.Register(NarrativeEvent.Create("power_cut")
@@ -137,6 +137,48 @@ namespace ThirdLamp
             d.Register(NarrativeEvent.Create("apparition_window")
                 .When(new PerceptionCondition(20), new ZoneCondition("living", false))
                 .Do(new SetActiveAction("apparition_window", true)));
+
+            // ---------- the house keeps changing (perception) ----------
+            d.Register(NarrativeEvent.Create("tv_static")
+                .Note("Heard from another room first: a click, then hiss. Nobody switched it on.")
+                .When(new PerceptionCondition(14), new PowerCondition(true), new IndoorsCondition(true),
+                      new ZoneCondition("living", false), new LookingAtCondition("tv", false))
+                .Do(new SetParamAction("tv", "on", 1f), new SetFlagAction("tv_static_on")));
+
+            d.Register(NarrativeEvent.Create("tv_static_stops")
+                .Note("It cuts out the moment the player has had a proper look.")
+                .When(new FlagCondition("tv_static_on"), new LookingAtCondition("tv", true, 7f, 1.2f))
+                .Do(new SetParamAction("tv", "on", 0f), new SetFlagAction("tv_static_seen"), new PulseAction(0.5f)));
+
+            d.Register(NarrativeEvent.Create("kitchen_cupboard_opens")
+                .Note("Heard, not seen. Inside, one of the clay figures from the corridor.")
+                .When(new PerceptionCondition(12), new ZoneCondition("kitchen", false), new IndoorsCondition(true),
+                      new LookingAtCondition("kitchen_cabinet", false))
+                .Do(new SetDoorAction("kitchen_cabinet", true), PlaySoundAction.At("creak", "kitchen_cabinet", 0.8f)));
+
+            d.Register(NarrativeEvent.Create("garden_figure")
+                .Note("Naked eye, peripheral. Pale, robed, like the ninth figure. Gone when looked at.")
+                .When(new PerceptionCondition(15), new ZoneCondition("living"), new LookingAtCondition("garden_figure", false))
+                .Do(new SetActiveAction("garden_figure", true, false)));
+
+            d.Register(NarrativeEvent.Create("wet_footprints")
+                .Note("Bare, wet, leading to the basement door. The player has been wearing shoes all night.")
+                .When(new PerceptionCondition(18), new FlagCondition(Generator.RestoredFlag),
+                      new ZoneCondition("hall", false), new LookingAtCondition("wet_footprints", false))
+                .Do(new SetActiveAction("wet_footprints", true)));
+
+            d.Register(NarrativeEvent.Create("hall_photo_scratched")
+                .When(new PerceptionCondition(25), new ZoneCondition("hall", false), new LookingAtCondition("hall_photo", false))
+                .Do(new SetMaterialStateAction("hall_photo", "scratched")));
+
+            d.Register(NarrativeEvent.Create("hall_portrait_scratched")
+                .When(new PerceptionCondition(30), new ZoneCondition("hall", false), new LookingAtCondition("hall_portrait", false))
+                .Do(new SetMaterialStateAction("hall_portrait", "scratched")));
+
+            d.Register(NarrativeEvent.Create("chalk_in_kitchen")
+                .Note("First chalk mark outside the lamp's light.")
+                .When(new PerceptionCondition(35), new ZoneCondition("kitchen", false), new LookingAtCondition("chalk_reason_kitchen", false))
+                .Do(new SetActiveAction("chalk_reason_kitchen", true)));
 
             d.Register(NarrativeEvent.Create("passing_car")
                 .Note("Headlights on the road below. Mundane. Probably.")
