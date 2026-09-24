@@ -201,8 +201,8 @@ namespace ThirdLamp
             Box("Hob", new Vector3(6.7f, 0.925f, 5.55f), new Vector3(0.55f, 0.01f, 0.5f), Mats.Color(new Color(0.08f, 0.08f, 0.08f), 0.5f), null, false);
             foreach (var rp in new[] { new Vector3(6.57f, 0.933f, 5.42f), new Vector3(6.83f, 0.933f, 5.42f), new Vector3(6.57f, 0.933f, 5.68f), new Vector3(6.83f, 0.933f, 5.68f) })
                 Cyl("Ring", rp, 0.16f, 0.006f, Mats.Color(new Color(0.03f, 0.03f, 0.03f), 0.3f), null, false);
-            Box("SinkRim", new Vector3(5.9f, 0.922f, 5.55f), new Vector3(0.56f, 0.004f, 0.46f), Mats.Color(new Color(0.7f, 0.72f, 0.74f), 0.85f), null, false);
-            Box("SinkWell", new Vector3(5.9f, 0.925f, 5.55f), new Vector3(0.46f, 0.004f, 0.34f), Mats.Color(new Color(0.12f, 0.12f, 0.13f), 0.9f), null, false);
+            Box("SinkRim", new Vector3(5.9f, 0.928f, 5.55f), new Vector3(0.56f, 0.004f, 0.46f), Mats.Color(new Color(0.7f, 0.72f, 0.74f), 0.85f), null, false);
+            Box("SinkWell", new Vector3(5.9f, 0.931f, 5.55f), new Vector3(0.46f, 0.004f, 0.34f), Mats.Color(new Color(0.12f, 0.12f, 0.13f), 0.9f), null, false);
 
             // base cabinet fronts
             if (doorFront != null)
@@ -230,7 +230,8 @@ namespace ThirdLamp
             hinge.localPosition = new Vector3(-0.275f, 0, -0.185f);
             if (doorFront != null)
                 Quad("Door", new Vector3(0.275f, 0, -0.006f), new Vector2(0.53f, 0.66f), Vector3.forward, doorFront, hinge);
-            Box("DoorSlab", new Vector3(0.275f, 0, 0.004f), new Vector3(0.53f, 0.66f, 0.016f), counterMat, hinge);
+            // trigger collider: still clickable, but the open door doesn't snag the player at head height
+            Box("DoorSlab", new Vector3(0.275f, 0, 0.004f), new Vector3(0.53f, 0.66f, 0.016f), counterMat, hinge).GetComponent<Collider>().isTrigger = true;
             var cabDoor = hinge.gameObject.AddComponent<Openable>();
             cabDoor.displayName = "cupboard";
             cabDoor.openEuler = new Vector3(0, 105f, 0);
@@ -448,7 +449,7 @@ namespace ThirdLamp
             Quad("ShelfBooks", new Vector3(-7.545f, 1.2f, 11f), new Vector2(3.1f, 2.3f), Vector3.left, Mats.Lit("books", Color.white, 0.1f, 2f, 2.5f));
             ShelfBoards(new Vector3(-7.545f, 0f, 11f), 3.16f, 0.05f, 0.46f, 5, Vector3.left, WoodDark);
             Picture("SaintPrint", "saint_print", new Vector3(-1.2f, 1.75f, 13.885f), new Vector2(0.22f, 0.33f), Vector3.forward);
-            Note("LooseBook", new Vector3(-7.47f, 1.33f, 10.2f), new Vector3(0.2f, 0.24f, 0.05f), "wood_door",
+            Note("LooseBook", new Vector3(-7.47f, 1.2f, 10.2f), new Vector3(0.2f, 0.24f, 0.05f), "wood_door",
                 "Pull out", "a loose book", SliceText.Letter, DocStyle.Letter, 2, "read_letter");
 
             Switch("study", new Vector3(-3.3f, 1.25f, 8.11f), Vector3.forward);

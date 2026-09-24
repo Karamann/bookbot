@@ -51,10 +51,10 @@ namespace ThirdLamp
             new Shot("11_bathroom_mirror", new Vector3(1.2f, 0, 10f), 90f, 0f, Light3.Lights, Light3.Torch),
             new Shot("12_storage", new Vector3(4.2f, 0, 8.7f), 35f, -6f, Light3.Lights, Light3.Torch),
             // later in the night: the perception events forced on, room lights on
-            new Shot("13_scare_tv", new Vector3(-7.2f, 0, 3.4f), 95f, -4f, Light3.Scare),
-            new Shot("14_scare_garden_window", new Vector3(-4.6f, 0, 2.9f), -92f, 0f, Light3.Scare),
+            new Shot("13_scare_tv", new Vector3(-6.9f, 0, 4.6f), 131f, 6f, Light3.Scare),
+            new Shot("14_scare_garden_window", new Vector3(-5.6f, 0, 1.3f), -52f, 0f, Light3.Scare),
             new Shot("15_scare_cupboard", new Vector3(5.2f, 0, 3.2f), -26f, -14f, Light3.Scare),
-            new Shot("16_scare_footprints", new Vector3(-4.3f, 0, 7f), 90f, -24f, Light3.Scare, Light3.Torch),
+            new Shot("16_scare_footprints", new Vector3(-4.3f, 0, 7f), 90f, 24f, Light3.Scare, Light3.Torch),
             new Shot("17_scare_hall_photo", new Vector3(0.2f, 0, 7.3f), 180f, 0f, Light3.Scare),
             new Shot("18_scare_portrait", new Vector3(-2.6f, 0, 6.5f), 0f, 0f, Light3.Scare),
             new Shot("19_scare_kitchen_chalk", new Vector3(5.2f, 0, 2.2f), 100f, 0f, Light3.Scare),
@@ -92,7 +92,7 @@ namespace ThirdLamp
             Game.Director.enabled = false;
 
             foreach (var o in FindObjectsByType<Openable>(FindObjectsSortMode.None))
-                if (o.kind == Openable.Kind.Hinge && !o.locked && !o.name.Contains("basement"))
+                if (o.kind == Openable.Kind.Hinge && !o.locked && o.displayName != "cupboard")
                     o.SetOpen(true, true, true);
 
             var asFound = Game.Lighting.SwitchedOnGroups();

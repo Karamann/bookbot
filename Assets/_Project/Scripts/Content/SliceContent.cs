@@ -153,7 +153,7 @@ namespace ThirdLamp
             d.Register(NarrativeEvent.Create("kitchen_cupboard_opens")
                 .Note("Heard, not seen. Inside, one of the clay figures from the corridor.")
                 .When(new PerceptionCondition(12), new ZoneCondition("kitchen", false), new IndoorsCondition(true),
-                      new LookingAtCondition("kitchen_cabinet", false))
+                      new DoorOpenCondition("kitchen_cabinet", false), new LookingAtCondition("kitchen_cabinet", false))
                 .Do(new SetDoorAction("kitchen_cabinet", true), PlaySoundAction.At("creak", "kitchen_cabinet", 0.8f)));
 
             d.Register(NarrativeEvent.Create("garden_figure")

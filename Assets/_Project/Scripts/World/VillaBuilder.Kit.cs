@@ -136,9 +136,9 @@ namespace ThirdLamp
             var g = Group(name, parent != null ? parent : cur);
             g.localPosition = basePos;
             g.localRotation = Quaternion.Euler(0, yaw, 0);
-            var mat = Mats.Cutout(tex, tint ?? Color.white, 0.45f);
-            int n = Mats.Urp ? 2 : 4;
-            for (int i = 0; i < n; i++)
+            // one-sided quads back to back: URP's two-sided mode would light the back faces wrongly
+            var mat = Mats.Cutout(tex, tint ?? Color.white, 0.45f, 0.05f, false);
+            for (int i = 0; i < 4; i++)
             {
                 var q = Prim(PrimitiveType.Quad, "Leaf", new Vector3(0, height / 2f, 0), new Vector3(w, height, 1f), mat, g, false, Quaternion.Euler(0, i * 90f, 0));
                 q.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
@@ -168,6 +168,7 @@ namespace ThirdLamp
         void Backdrop()
         {
             var g = Group("Backdrop", root);
+            ReasonOnly(g.gameObject); // the Mind corridor runs out past the ring
             if (Tex.Exists("night_sky_dome"))
             {
                 var sky = Mats.UnlitTinted("night_sky_dome", new Color(0.55f, 0.5f, 0.48f));
@@ -200,7 +201,7 @@ namespace ThirdLamp
             Decal("damp_stain_a", new Vector3(-7.4f, 2.35f, 5.885f), new Vector2(1.1f, 0.8f), Vector3.forward, 0f, 0.8f);
             Decal("cobweb_a", new Vector3(-7.72f, 2.62f, 5.72f), new Vector2(0.6f, 0.6f), new Vector3(-1, 0, 1), 0f);
             Decal("water_ring", new Vector3(-6.2f, 0.442f, 3.25f), new Vector2(0.12f, 0.12f), Vector3.down, 30f, 0.7f);
-            Decal("scuff_marks", new Vector3(-3.3f, 0.2f, 5.885f), new Vector2(0.7f, 0.35f), Vector3.forward, 0f, 0.7f);
+            Decal("scuff_marks", new Vector3(-3.0f, 0.2f, 5.885f), new Vector2(0.7f, 0.35f), Vector3.forward, 0f, 0.7f);
             Decal("crack_plaster", new Vector3(-1.2f, 2.2f, 0.115f), new Vector2(0.8f, 0.8f), Vector3.back, 0f, 0.8f);
             Decal("ceiling_drip", new Vector3(-5.2f, WallH - 0.002f, 1.6f), new Vector2(0.9f, 0.9f), Vector3.up, 0f, 0.8f);
 
@@ -211,10 +212,10 @@ namespace ThirdLamp
             Decal("scuff_marks", new Vector3(3.5f, 0.003f, 2.6f), new Vector2(1.2f, 0.6f), Vector3.down, 10f, 0.5f);
 
             // hallway: a handprint at shoulder height, near the basement door
-            Decal("handprint_faint", new Vector3(5.4f, 1.3f, 7.885f), new Vector2(0.2f, 0.2f), Vector3.forward, -8f, 0.8f);
+            Decal("handprint_faint", new Vector3(5.885f, 1.3f, 7.72f), new Vector2(0.2f, 0.2f), Vector3.right, -8f, 0.8f);
             Decal("crack_plaster", new Vector3(-5.6f, 2.3f, 6.115f), new Vector2(0.9f, 0.9f), Vector3.back, 90f, 0.7f);
             Decal("cobweb_b", new Vector3(5.72f, 2.62f, 7.72f), new Vector2(0.55f, 0.55f), new Vector3(1, 0, 1), 0f);
-            Decal("damp_stain_b", new Vector3(3f, 0.45f, 6.115f), new Vector2(1.4f, 0.8f), Vector3.back, 0f, 0.8f);
+            Decal("damp_stain_b", new Vector3(4.3f, 0.45f, 6.115f), new Vector2(1.4f, 0.8f), Vector3.back, 0f, 0.8f);
 
             // study
             Decal("damp_stain_b", new Vector3(-7.885f, 2.2f, 13.2f), new Vector2(1.0f, 1.0f), Vector3.left, 0f, 0.8f);
@@ -225,7 +226,7 @@ namespace ThirdLamp
             Decal("mould_corner", new Vector3(0.115f, 2.4f, 13.7f), new Vector2(0.8f, 0.8f), Vector3.left, 0f, 1f);
             Decal("mould_corner", new Vector3(3.385f, 2.45f, 8.35f), new Vector2(0.6f, 0.6f), Vector3.right, 90f, 0.9f);
             Decal("ceiling_drip", new Vector3(1.9f, WallH - 0.002f, 12.6f), new Vector2(1.0f, 1.0f), Vector3.up, 0f, 1f);
-            Decal("damp_stain_c", new Vector3(1.2f, 1.3f, 13.885f), new Vector2(0.9f, 1.3f), Vector3.forward, 0f, 0.9f);
+            Decal("damp_stain_c", new Vector3(0.85f, 1.1f, 13.885f), new Vector2(0.9f, 1.3f), Vector3.forward, 0f, 0.9f);
         }
     }
 }

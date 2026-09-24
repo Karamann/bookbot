@@ -40,7 +40,13 @@ namespace ThirdLamp.EditorTools
             string kind = string.IsNullOrEmpty(slot.kind) ? "tex" : slot.kind;
 
             ti.isReadable = false;
-            ti.mipmapEnabled = kind != "sprite";
+            ti.npotScale = TextureImporterNPOTScale.None; // keep true aspect; sprites are sized from it
+            ti.mipmapEnabled = true;
+            if (kind == "sprite")
+            {
+                ti.mipMapsPreserveCoverage = true;
+                ti.alphaTestReferenceValue = 0.5f;
+            }
             ti.wrapMode = slot.tiling ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             ti.filterMode = slot.pixel ? FilterMode.Point : FilterMode.Bilinear;
             ti.anisoLevel = slot.tiling ? 4 : 1;

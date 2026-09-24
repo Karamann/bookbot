@@ -71,15 +71,15 @@ namespace ThirdLamp
         }
 
         /// <summary>Alpha-tested lit material: foliage, ghosts, cobwebs, curtains. Two-sided under URP.</summary>
-        public static Material Cutout(string texture, Color tint, float cutoff = 0.5f, float smoothness = 0.05f)
+        public static Material Cutout(string texture, Color tint, float cutoff = 0.5f, float smoothness = 0.05f, bool twoSided = true)
         {
-            string key = $"cut|{texture}|{tint}|{cutoff}|{smoothness}";
+            string key = $"cut|{texture}|{tint}|{cutoff}|{smoothness}|{twoSided}";
             if (cache.TryGetValue(key, out var m)) return m;
             if (Urp)
             {
                 m = new Material(LitShader);
                 m.SetFloat("_AlphaClip", 1f);
-                m.SetFloat("_Cull", 0f);
+                m.SetFloat("_Cull", twoSided ? 0f : 2f);
                 m.EnableKeyword("_ALPHATEST_ON");
                 m.SetOverrideTag("RenderType", "TransparentCutout");
             }

@@ -36,14 +36,16 @@ namespace ThirdLamp
         {
             if (!Tex.Exists("window_cookie")) return;
             var cookie = Tex.Get("window_cookie");
-            (Vector3 pos, Vector3 look)[] shafts =
+            // aimed through the middle of each window; hard shadows so the walls cut the shape
+            (Vector3 pos, Vector3 windowCentre)[] shafts =
             {
-                (new Vector3(-10.2f, 3.6f, 3f), new Vector3(1f, -0.62f, 0f)),     // living, west window
-                (new Vector3(-5.5f, 3.4f, 16.2f), new Vector3(0f, -0.55f, -1f)),  // study, north window
-                (new Vector3(10.2f, 3.6f, 3f), new Vector3(-1f, -0.62f, 0f)),     // kitchen, east window
+                (new Vector3(-10.2f, 3.6f, 3f), new Vector3(-8f, 1.45f, 3f)),     // living, west window
+                (new Vector3(-5.5f, 3.4f, 16.2f), new Vector3(-5.5f, 1.45f, 14f)), // study, north window
+                (new Vector3(10.2f, 3.6f, 3f), new Vector3(8f, 1.45f, 3f)),       // kitchen, east window
             };
-            foreach (var (pos, look) in shafts)
+            foreach (var (pos, windowCentre) in shafts)
             {
+                var look = windowCentre - pos;
                 var l = new GameObject("MoonShaft").AddComponent<Light>();
                 l.transform.SetParent(root, false);
                 l.transform.position = pos;
@@ -54,7 +56,7 @@ namespace ThirdLamp
                 l.intensity = 1.1f;
                 l.color = new Color(0.6f, 0.7f, 1f);
                 l.cookie = cookie;
-                l.shadows = LightShadows.None;
+                l.shadows = LightShadows.Hard;
             }
         }
 
@@ -86,9 +88,10 @@ namespace ThirdLamp
                 var g = Group("Olive", cur);
                 g.localPosition = new Vector3(t.x, 0, t.y);
                 g.localRotation = Quaternion.Euler(0, r.Next(0, 360), 0);
-                Cyl("Trunk", new Vector3(0, 0.8f, 0), 0.32f, 1.6f, bark, g);
+                // the olive sprites are whole trees, trunk included
                 string canopy = r.Next(0, 2) == 0 ? "olive_canopy_a" : "olive_canopy_b";
-                if (Cross("Canopy", canopy, new Vector3(0, 0.9f, 0), 3.4f + (float)r.NextDouble() * 1.2f, 0f, g, new Color(0.75f, 0.78f, 0.75f)) != null) continue;
+                if (Cross("Olive", canopy, new Vector3(0, -0.1f, 0), 4.2f + (float)r.NextDouble() * 1.4f, 0f, g, new Color(0.75f, 0.78f, 0.75f)) != null) continue;
+                Cyl("Trunk", new Vector3(0, 0.8f, 0), 0.32f, 1.6f, bark, g);
                 for (int i = 0; i < 4; i++)
                     Prim(PrimitiveType.Sphere, "Crown", new Vector3((float)(r.NextDouble() - 0.5) * 2f, 2.1f + (float)r.NextDouble() * 0.8f, (float)(r.NextDouble() - 0.5) * 2f),
                         Vector3.one * (1.6f + (float)r.NextDouble()), leaves, g, false);
@@ -96,16 +99,16 @@ namespace ThirdLamp
 
             // cypresses along the north wall, dry weeds along every boundary
             for (float x = -18f; x <= 18f; x += 4.5f)
-                Cross("Cypress", "cypress", new Vector3(x + (float)(r.NextDouble() - 0.5), 0, 22.6f), 6.5f + (float)r.NextDouble() * 1.5f, r.Next(0, 90), null, new Color(0.7f, 0.72f, 0.7f));
+                Cross("Cypress", "cypress", new Vector3(x + (float)(r.NextDouble() - 0.5), -0.1f, 22.6f), 6.5f + (float)r.NextDouble() * 1.5f, r.Next(0, 90), null, new Color(0.7f, 0.72f, 0.7f));
             for (int i = 0; i < 36; i++)
             {
                 float t = (float)r.NextDouble();
                 Vector3 p = (i % 4) switch
                 {
-                    0 => new Vector3(-20.5f, 0, Mathf.Lerp(-25f, 23f, t)),
-                    1 => new Vector3(19.5f, 0, Mathf.Lerp(-25f, 23f, t)),
-                    2 => new Vector3(Mathf.Lerp(-20f, 19f, t), 0, 23.5f),
-                    _ => new Vector3(Mathf.Lerp(-8.5f, 8.5f, t), 0, i % 8 == 3 ? -0.35f : 14.35f),
+                    0 => new Vector3(-20.5f, -0.1f, Mathf.Lerp(-25f, 23f, t)),
+                    1 => new Vector3(19.5f, -0.1f, Mathf.Lerp(-25f, 23f, t)),
+                    2 => new Vector3(Mathf.Lerp(-20f, 19f, t), -0.1f, 23.5f),
+                    _ => new Vector3(Mathf.Lerp(-8.5f, 8.5f, t), -0.1f, i % 8 == 3 ? -0.35f : 14.35f),
                 };
                 Cross("Weeds", "dry_weeds", p, 0.45f + (float)r.NextDouble() * 0.35f, r.Next(0, 90));
             }
@@ -117,14 +120,15 @@ namespace ThirdLamp
                 Prim(PrimitiveType.Sphere, "HillN", new Vector3(0, -20, 140), new Vector3(260, 70, 60), hill, null, false);
                 Prim(PrimitiveType.Sphere, "HillE", new Vector3(150, -25, 30), new Vector3(60, 70, 240), hill, null, false);
             }
-            Quad("CityGlow", new Vector3(-90, 8, -150), new Vector2(260, 40), new Vector3(0.5f, 0, -1f).normalized, Mats.Unlit("night_sky_glow"));
+            // inside the sky ring (radius 62), on the same bearing as before
+            Quad("CityGlow", new Vector3(-28f, 5f, -40f), new Vector2(84f, 13f), new Vector3(-0.514f, 0, -0.857f), Mats.Unlit("night_sky_glow"));
 
             // Second Lamp, later: someone outside the living-room window, looking in
             Figure("apparition_window", new Vector3(-9.4f, -0.1f, 3f), 90f, false, "figure_window_silhouette", 1.85f);
 
             // Naked eye, much later: far out in the garden, pale, like someone who stepped out of a painting.
             // Gone the moment it is looked at directly.
-            var garden = Sprite("GardenFigure", "figure_pale_robed", new Vector3(-17.5f, 0, 2.2f), 1.8f, true,
+            var garden = Sprite("GardenFigure", "figure_pale_robed", new Vector3(-17.5f, -0.1f, 2.2f), 1.8f, true,
                 Mats.Cutout("figure_pale_robed", new Color(1.35f, 1.35f, 1.3f), 0.5f));
             if (garden != null)
             {
