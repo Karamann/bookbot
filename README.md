@@ -31,6 +31,12 @@ assign it in *Project Settings › Graphics* and *Quality*. Without it the slice
 built-in pipeline, and a lighter IMGUI grain and vignette overlay is always on.
 For standalone builds, run **Tools › The Third Lamp › Include Runtime Shaders In Builds** once.
 
+**Screenshots:** **Tools › The Third Lamp › Capture Screenshots** plays the slice, skips the intro
+and walks the player through 16 fixed viewpoints (grounds, every room, and the Third Lamp
+corridor). It saves what the Game view shows, HUD included, under several lighting states
+(`asfound`, `lights`, `torch`, `lamp`) to `Screenshots/` in the project root, then stops Play mode.
+Set the Game view to 1920×1080 first, and leave the mouse still while it runs.
+
 ## Controls
 
 | Key | Action |

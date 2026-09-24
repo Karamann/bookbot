@@ -73,6 +73,23 @@ namespace ThirdLamp.EditorTools
             Debug.Log("[ThirdLamp] Runtime shaders added to Always Included Shaders.");
         }
 
+        /// <summary>Plays the slice and saves a set of first-person screenshots to &lt;project&gt;/Screenshots/.</summary>
+        [MenuItem("Tools/The Third Lamp/Capture Screenshots", priority = 30)]
+        public static void CaptureScreenshots()
+        {
+            if (EditorApplication.isPlaying)
+            {
+                Debug.LogWarning("[ThirdLamp] Stop Play mode first, then run Capture Screenshots.");
+                return;
+            }
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            if (!System.IO.File.Exists(ScenePath)) RecreateScene();
+            EditorSceneManager.OpenScene(ScenePath);
+            SessionState.SetBool(ScreenshotTour.PendingKey, true);
+            Debug.Log("[ThirdLamp] Capturing screenshots. Leave the mouse still until Play mode stops.");
+            EditorApplication.isPlaying = true;
+        }
+
         [MenuItem("Tools/The Third Lamp/Delete Checkpoint Save", priority = 40)]
         public static void DeleteSave()
         {
