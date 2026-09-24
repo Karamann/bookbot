@@ -16,7 +16,7 @@ namespace ThirdLamp.EditorTools
     public static class QaMenu
     {
         const string ScenePath = "Assets/_Project/Scenes/Slice.unity";
-        const string ActiveKey = "ThirdLamp.Qa.Active";
+        const string ActiveKey = QaQueue.ActiveKey;
         const string Menu = "Tools/The Third Lamp/QA/";
 
         static QaMenu() => EditorApplication.playModeStateChanged += OnPlayModeChanged;
@@ -64,6 +64,7 @@ namespace ThirdLamp.EditorTools
         {
             QaQueue.Clear();
             SessionState.EraseBool(ActiveKey);
+            QaUtil.RestoreCheckpoint();
             if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;
         }
 
@@ -75,8 +76,10 @@ namespace ThirdLamp.EditorTools
             if (EditorApplication.isPlaying) { Debug.LogWarning("[ThirdLamp] Stop Play mode before starting QA runs."); return; }
             if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             QaQueue.Clear();
+            QaQueue.ResetFailed();
             QaQueue.Enqueue(runs);
             SessionState.SetBool(ActiveKey, true);
+            QaUtil.SetAsideCheckpoint(); // restored when the queue finishes
             Debug.Log($"[ThirdLamp] QA queued: {string.Join(", ", runs)}. Leave the Game view focused and the mouse still.");
             StartNext();
         }
@@ -85,8 +88,16 @@ namespace ThirdLamp.EditorTools
         {
             if (!File.Exists(ScenePath)) { Debug.LogWarning("[ThirdLamp] Slice scene missing. Use Tools › The Third Lamp › Recreate Slice Scene."); QaQueue.Clear(); return; }
             EditorSceneManager.OpenScene(ScenePath);
-            QaUtil.DeleteCheckpoint(); // every run starts from a fresh night
+            QaUtil.SetAsideCheckpoint(); // every run starts from a fresh night
+            FocusGameView(); // screenshots wait for the Game view to render
             EditorApplication.isPlaying = true;
+        }
+
+        static void FocusGameView()
+        {
+            if (Application.isBatchMode) return;
+            var type = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView");
+            if (type != null) EditorWindow.GetWindow(type).Focus();
         }
 
         static void OnPlayModeChanged(PlayModeStateChange change)
@@ -95,6 +106,7 @@ namespace ThirdLamp.EditorTools
             if (!string.IsNullOrEmpty(QaQueue.Running))
             {
                 Debug.LogWarning($"[ThirdLamp] QA run '{QaQueue.Running}' was interrupted. Remaining runs cancelled.");
+                QaQueue.MarkFailed();
                 QaQueue.Clear();
             }
             if (!QaQueue.Empty)
@@ -103,8 +115,10 @@ namespace ThirdLamp.EditorTools
                 return;
             }
             SessionState.EraseBool(ActiveKey);
-            Debug.Log("[ThirdLamp] QA finished. Reports: QA/latest_*/report.md · Screenshots/metrics.md");
-            if (Application.isBatchMode) EditorApplication.Exit(0);
+            QaUtil.RestoreCheckpoint();
+            bool failed = QaQueue.AnyFailed;
+            Debug.Log($"[ThirdLamp] QA finished{(failed ? " with failures" : "")}. Reports: QA/latest_*/report.md · Screenshots/metrics.md");
+            if (Application.isBatchMode) EditorApplication.Exit(failed ? 1 : 0);
             else EditorUtility.RevealInFinder(QaUtil.QaRoot);
         }
     }

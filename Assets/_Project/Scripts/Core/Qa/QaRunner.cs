@@ -47,6 +47,7 @@ namespace ThirdLamp.Qa
             Dir = Path.Combine(QaUtil.QaRoot, DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_" + Kind);
             Directory.CreateDirectory(Dir);
             Application.logMessageReceived += OnLog;
+            DontDestroyOnLoad(gameObject); // survive a checkpoint reload so the run still reports
         }
 
         void OnDestroy() => Application.logMessageReceived -= OnLog;
@@ -54,10 +55,41 @@ namespace ThirdLamp.Qa
         IEnumerator Start()
         {
             startTime = Time.realtimeSinceStartup;
-            yield return null;
-            yield return null;
-            yield return Run();
+            // let shader compiles and the first frames settle before anything is timed
+            yield return new WaitForSecondsRealtime(3f);
+            yield return Drive(Run());
             Finish();
+        }
+
+        /// <summary>
+        /// Runs a coroutine tree by hand so an exception anywhere is recorded and ends the run cleanly,
+        /// instead of silently killing the coroutine and leaving the watchdog to time out.
+        /// </summary>
+        IEnumerator Drive(IEnumerator root)
+        {
+            var stack = new Stack<IEnumerator>();
+            stack.Push(root);
+            while (stack.Count > 0)
+            {
+                var top = stack.Peek();
+                bool moved;
+                object current = null;
+                try
+                {
+                    moved = top.MoveNext();
+                    if (moved) current = top.Current;
+                }
+                catch (Exception e)
+                {
+                    var inner = e is System.Reflection.TargetInvocationException t && t.InnerException != null ? t.InnerException : e;
+                    AddFinding("error", "bot-crash", $"Run stopped by {inner.GetType().Name}: {inner.Message}", null, Vector3.zero);
+                    report.failed++;
+                    yield break;
+                }
+                if (!moved) { stack.Pop(); continue; }
+                if (current is IEnumerator nested) { stack.Push(nested); continue; }
+                yield return current;
+            }
         }
 
         protected abstract IEnumerator Run();
@@ -169,6 +201,7 @@ namespace ThirdLamp.Qa
             File.WriteAllText(Path.Combine(Dir, "report.md"), Markdown());
             QaUtil.CopyDirectory(Dir, Path.Combine(QaUtil.QaRoot, "latest_" + Kind));
             Debug.Log($"[ThirdLamp] QA {report.summary}\n{Dir}");
+            if (report.failed > 0 || bad > 0 || report.errors > 0) QaQueue.MarkFailed();
             QaQueue.Finish();
         }
 

@@ -34,6 +34,11 @@ namespace ThirdLamp.Qa
         public static void Enqueue(params string[] kinds) { var l = Items; l.AddRange(kinds); Items = l; }
         public static void Clear() { SessionState.EraseString(Key); SessionState.EraseString(RunningKey); }
         public static string Running => SessionState.GetString(RunningKey, "");
+        public const string ActiveKey = "ThirdLamp.Qa.Active";
+        const string FailedKey = "ThirdLamp.Qa.Failed";
+        public static void MarkFailed() => SessionState.SetBool(FailedKey, true);
+        public static bool AnyFailed => SessionState.GetBool(FailedKey, false);
+        public static void ResetFailed() => SessionState.EraseBool(FailedKey);
 
         static void Pop()
         {
@@ -46,11 +51,14 @@ namespace ThirdLamp.Qa
         static void Dispatch()
         {
             var head = Peek();
-            if (head == null) return;
+            // only runs started from the QA menu; a leftover queue must not hijack a normal Play press
+            if (head == null || !SessionState.GetBool(ActiveKey, false)) return;
             if (UnityEngine.Object.FindAnyObjectByType<SliceBootstrap>() == null)
             {
                 Debug.LogWarning("[ThirdLamp] QA runs need the Slice scene. Clearing the QA queue.");
+                MarkFailed();
                 Clear();
+                EditorApplication.isPlaying = false;
                 return;
             }
             SessionState.SetString(RunningKey, head);
@@ -163,9 +171,21 @@ namespace ThirdLamp.Qa
             return null;
         }
 
-        public static void DeleteCheckpoint()
+        static string BackupPath => CheckpointPath + ".qa-backup";
+
+        /// <summary>Moves the developer's checkpoint aside so runs start fresh; <see cref="RestoreCheckpoint"/> puts it back.</summary>
+        public static void SetAsideCheckpoint()
         {
+            if (!File.Exists(CheckpointPath)) return;
+            if (!File.Exists(BackupPath)) File.Move(CheckpointPath, BackupPath);
+            else File.Delete(CheckpointPath); // a QA run's own checkpoint from the previous run
+        }
+
+        public static void RestoreCheckpoint()
+        {
+            if (!File.Exists(BackupPath)) return;
             if (File.Exists(CheckpointPath)) File.Delete(CheckpointPath);
+            File.Move(BackupPath, CheckpointPath);
         }
 
         public static string PathOf(Transform t)

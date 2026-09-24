@@ -16,7 +16,7 @@ namespace ThirdLamp.Qa
         public int seed = 1;
         public float minutes = 5f;
 
-        protected override string Kind => "monkey";
+        protected override string Kind => "monkey_" + seed;
         protected override float MaxSeconds => minutes * 60f + 120f;
 
         // map covers the grounds and the Mind corridor
@@ -52,8 +52,8 @@ namespace ThirdLamp.Qa
 
             float end = Time.realtimeSinceStartup + minutes * 60f;
             float heading = Rand(0, 360), nextTurn = 0, nextPoke = 1, nextToggle = 8, nextTeleport = 40;
-            Vector3 lastPos = Game.Player.transform.position;
-            float stuckFor = 0, notPlayFor = 0;
+            Vector3 windowStart = Game.Player.transform.position;
+            float windowTime = 0, stuckFor = 0, notPlayFor = 0;
             int shotsLeft = 6;
 
             while (Time.realtimeSinceStartup < end)
@@ -87,11 +87,21 @@ namespace ThirdLamp.Qa
                 var dir = Quaternion.Euler(0, heading, 0) * Vector3.forward;
                 cc.Move(dir * 1.7f * Time.deltaTime);
 
-                // -------- stuck: trying to walk but not getting anywhere
-                if ((p - lastPos).sqrMagnitude < 0.0004f) stuckFor += Time.deltaTime; else stuckFor = 0;
-                lastPos = p;
-                if (stuckFor > 0.7f) heading += Rand(90, 270);
-                if (stuckFor > 3f)
+                // -------- stuck: speed over half-second windows, independent of frame rate
+                windowTime += Time.deltaTime;
+                if (windowTime >= 0.5f)
+                {
+                    var moved = p - windowStart; moved.y = 0;
+                    if (moved.magnitude / windowTime < 0.3f)
+                    {
+                        stuckFor += windowTime;
+                        heading += Rand(90, 270); // try another way, once per window
+                    }
+                    else stuckFor = 0;
+                    windowStart = p;
+                    windowTime = 0;
+                }
+                if (stuckFor >= 3f)
                 {
                     var cell = new Vector2Int(Mathf.FloorToInt(p.x / 1f), Mathf.FloorToInt(p.z / 1f));
                     if (stuckCells.Add(cell))
@@ -103,10 +113,17 @@ namespace ThirdLamp.Qa
 
                 // -------- out of bounds
                 bool inMind = Game.Lighting.MindActive;
-                if (p.y < -2f || p.x < -21.2f || p.z < -26.5f || p.z > 24.5f || (p.x > 20.5f && !inMind))
+                if (p.y < -2f)
                 {
                     escapes++;
-                    AddFinding("error", "out-of-bounds", $"Player left the playable area (y {p.y:0.0}).", Game.Player.transform, p);
+                    AddFinding("error", "out-of-bounds", $"Player fell through the world (y {p.y:0.0}).", Game.Player.transform, p);
+                    Respawn();
+                }
+                else if (p.x < -21.2f || p.z < -26.5f || p.z > 24.5f || (p.x > 20.5f && !inMind))
+                {
+                    // the drive and the east wall have gaps on purpose; leaving is possible, just noted
+                    escapes++;
+                    AddFinding("warning", "left-grounds", "Walked out of the grounds through a gap in the boundary wall.", Game.Player.transform, p);
                     Respawn();
                 }
 
@@ -169,7 +186,7 @@ namespace ThirdLamp.Qa
             if (!target.isActiveAndEnabled || !target.CanInteract) return;
             try
             {
-                if (target is InspectableObject item && Game.Interactor.Held != null) Game.Interactor.Drop();
+                if (target is InspectableObject && Game.Interactor.Held != null) Game.Interactor.Drop();
                 target.Interact();
                 interactions++;
                 var key = target.GetType().Name + " " + target.name;

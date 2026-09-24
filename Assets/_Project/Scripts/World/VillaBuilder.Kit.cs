@@ -160,7 +160,7 @@ namespace ThirdLamp
             Box("FrameB", new Vector3(0, -size.y / 2f - b / 2f, -0.005f), new Vector3(size.x + 2 * b, b, 0.025f), frame, g, false);
             Box("FrameL", new Vector3(-size.x / 2f - b / 2f, 0, -0.005f), new Vector3(b, size.y, 0.025f), frame, g, false);
             Box("FrameR", new Vector3(size.x / 2f + b / 2f, 0, -0.005f), new Vector3(b, size.y, 0.025f), frame, g, false);
-            Prim(PrimitiveType.Quad, "Image", new Vector3(0, 0, -0.001f), new Vector3(size.x, size.y, 1f), Mats.Lit(tex, Color.white, 0.3f), g, false);
+            Prim(PrimitiveType.Quad, "Image", new Vector3(0, 0, -0.003f), new Vector3(size.x, size.y, 1f), Mats.Lit(tex, Color.white, 0.3f), g, false);
             return g.gameObject;
         }
 

@@ -25,7 +25,9 @@ namespace ThirdLamp.Qa
             yield return null;
 
             // ---------------------------------------------------------------- arrival
-            yield return Step("Arrival view", () => QaUtil.Teleport(new Vector3(-2.7f, 0, -13.2f), 8f), () => true, 0.5f, true);
+            QaUtil.Teleport(new Vector3(-2.7f, 0, -13.2f), 8f);
+            yield return new WaitForSeconds(0.5f);
+            yield return Shot("arrival");
 
             var pot = QaUtil.FindPickup<FlagPickup>(p => p.flag == "has_front_key");
             yield return Step("Lift the blue pot, find the key",
@@ -64,10 +66,11 @@ namespace ThirdLamp.Qa
             yield return null;
 
             // ---------------------------------------------------------------- photographs
-            yield return Photograph("014", new Vector3(-6.0f, 0, 8.2f), Game.World.Find("item_014").transform.position);
-            // the icon lies inside the crate: stand close so the lens sees over the crate side
-            yield return Photograph("027", new Vector3(-6.45f, 0, 9.05f), Game.World.Find("item_027").transform.position);
-            yield return Photograph("031", new Vector3(-6.4f, 0, 4.45f), Game.World.Find("painting_031").transform.position);
+            // stand points are clear of the table and walls; the icon lies in the crate, so it is shot
+            // from the far side where the eye clears the crate wall
+            yield return Photograph("014", new Vector3(-6.0f, 0, 8.45f), "item_014");
+            yield return Photograph("027", new Vector3(-6.45f, 0, 10.1f), "item_027");
+            yield return Photograph("031", new Vector3(-6.4f, 0, 4.45f), "painting_031");
             yield return Step("Painting noticed (looked at for 1 s)", null, () => Flag("painting_first_seen"), 4f);
 
             // ---------------------------------------------------------------- catalogue
@@ -98,20 +101,22 @@ namespace ThirdLamp.Qa
             yield return Shot("generator_shed");
             for (int i = 0; i < 3; i++)
             {
-                yield return Step($"Pull the generator cord ({i + 1}/3)", () => gen.Interact(), () => true, 0.1f);
+                gen.Interact();
                 yield return new WaitForSeconds(1.3f);
             }
-            yield return Step("Generator restored", null, () => Flag(Generator.RestoredFlag) && Game.Lighting.PowerOn, 5f, true);
+            yield return Step("Generator restored after three pulls", null, () => Flag(Generator.RestoredFlag) && Game.Lighting.PowerOn, 5f, true);
 
             // ---------------------------------------------------------------- the ninth figure
-            yield return Step("Painting changes while unobserved",
+            yield return Step("Painting has changed (while unobserved)",
                 () => QaUtil.Teleport(new Vector3(3.5f, 0, 2.5f), 180f),
-                () => Flag("painting_changed"), 5f);
+                () => Flag("painting_changed") && Game.World.Find("desk_key").activeInHierarchy, 5f);
             yield return Step("See the ninth figure",
                 () => { QaUtil.Teleport(new Vector3(-6.4f, 0, 4.45f), 0f); QaUtil.AimAt(Game.World.Find("painting_031").transform.position); },
                 () => Flag("saw_ninth"), 5f, true);
 
-            yield return Step("Take the brass key", () => Game.World.Get<FlagPickup>("desk_key").Interact(), () => Flag("has_desk_key"));
+            yield return Step("Take the brass key (only there after the change)",
+                () => { if (!Game.World.Find("desk_key").activeInHierarchy) throw new System.InvalidOperationException("desk key is not in the world"); Game.World.Get<FlagPickup>("desk_key").Interact(); },
+                () => Flag("has_desk_key"));
             yield return Step("Unlock the desk drawer",
                 () => { QaUtil.Teleport(new Vector3(-2.0f, 0, 12.6f), 0f, 30f); Game.World.Get<Openable>("desk_drawer").Interact(); },
                 () => Game.World.Get<Openable>("desk_drawer").IsOpen, 3f);
@@ -144,8 +149,8 @@ namespace ThirdLamp.Qa
                     if (!lamp.Lit) lamp.Toggle();
                 },
                 () => Game.Lighting.MindActive && Flag("mind_seen"), 4f, true);
-            yield return Step("Walk into the corridor", () => QaUtil.Teleport(new Vector3(13f, 0, 7f), 90f), () => Game.Lighting.MindActive, 2f, true);
-            yield return Step("Reach the great mark", () => QaUtil.Teleport(new Vector3(50f, 0, 7f), 90f, -3f), () => Game.Lighting.MindActive, 2f, true);
+            yield return Step("Walk into the corridor", () => QaUtil.Teleport(new Vector3(13f, 0, 7f), 90f), () => Game.Lighting.MindActive && InCorridor(), 2f, true);
+            yield return Step("Reach the great mark", () => QaUtil.Teleport(new Vector3(50f, 0, 7f), 90f, -3f), () => Game.Lighting.MindActive && InCorridor(), 2f, true);
             yield return Step("Walk back to the hallway", () => QaUtil.Teleport(new Vector3(-2f, 0, 7f), -90f), () => Game.Lighting.MindActive, 2f);
 
             yield return Step("Put the lamp out", () => lamp.Toggle(), () => Flag("lamp_out_after_mind"), 3f);
@@ -175,15 +180,19 @@ namespace ThirdLamp.Qa
             yield return Step("TV turns itself on (player in the kitchen)",
                 () => QaUtil.Teleport(new Vector3(5f, 0, 2f), 90f),
                 () => Flag("tv_static_on"), 6f);
-            yield return Step("TV static seen",
-                () => { QaUtil.Teleport(new Vector3(-6.9f, 0, 4.6f), 131f); QaUtil.AimAt(new Vector3(-5.25f, 0.84f, 2.94f)); },
-                () => true, 0.8f, true);
+            QaUtil.Teleport(new Vector3(-6.9f, 0, 4.6f), 131f);
+            QaUtil.AimAt(new Vector3(-5.25f, 0.84f, 2.94f));
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("tv_static");
             yield return Step("TV cuts out once looked at", null, () => Flag("tv_static_seen"), 4f);
 
-            yield return Step("Open cupboard (clay figure inside)",
-                () => { QaUtil.Teleport(new Vector3(4.6f, 0, 4.4f), -20f); QaUtil.AimAt(new Vector3(3.98f, 1.8f, 5.7f)); }, () => true, 0.6f, true);
-            yield return Step("Footprints lead to the basement",
-                () => QaUtil.Teleport(new Vector3(-4.3f, 0, 7f), 90f, 24f), () => true, 0.6f, true);
+            QaUtil.Teleport(new Vector3(4.6f, 0, 4.4f), -20f);
+            QaUtil.AimAt(new Vector3(3.98f, 1.8f, 5.7f));
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("cupboard_open");
+            QaUtil.Teleport(new Vector3(-4.3f, 0, 7f), 90f, 24f);
+            yield return new WaitForSeconds(0.4f);
+            yield return Shot("footprints");
         }
 
         // ------------------------------------------------------------------ helpers
@@ -195,19 +204,19 @@ namespace ThirdLamp.Qa
                 () => Game.Mode == InputMode.Computer && Page() != "Boot", 6f);
         }
 
-        IEnumerator Photograph(string id, Vector3 stand, Vector3 target)
+        IEnumerator Photograph(string id, Vector3 stand, string worldId)
         {
-            yield return Step($"Photograph No. {id}",
+            var target = Game.World.Find(worldId).GetComponentInChildren<Renderer>().bounds.center;
+            QaUtil.Teleport(stand, 0f);
+            QaUtil.AimAt(target);
+            cam.SetRaised(true);
+            yield return new WaitForSeconds(0.6f); // let the lens settle
+            yield return Step($"Photograph No. {id} (recognised in the frame)",
                 () =>
                 {
-                    QaUtil.Teleport(stand, 0f);
-                    QaUtil.AimAt(target);
-                    cam.SetRaised(true);
+                    QaUtil.AimAt(target); // the controller may have nudged us while settling
+                    cam.StartCoroutine((IEnumerator)QaUtil.Call(cam, "Capture"));
                 },
-                () => true, 0.1f);
-            yield return new WaitForSeconds(0.6f); // let the lens settle
-            yield return Step($"Photo of No. {id} recognised",
-                () => cam.StartCoroutine((IEnumerator)QaUtil.Call(cam, "Capture")),
                 () => Flag("photographed_" + id), 3f, true);
             cam.SetRaised(false);
             yield return null;
@@ -224,6 +233,12 @@ namespace ThirdLamp.Qa
         }
 
         string Page() => QaUtil.FieldString(computer, "page");
+
+        static bool InCorridor()
+        {
+            var z = RoomZone.At(Game.Player.transform.position);
+            return z != null && z.id == LightingStateManager.MindCorridorZone;
+        }
 
         void TypeAndSubmit(string text)
         {

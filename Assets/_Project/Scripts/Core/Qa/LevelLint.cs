@@ -81,6 +81,8 @@ namespace ThirdLamp.Qa
             foreach (var r in t.GetComponentsInChildren<Renderer>())
             {
                 if (!r.enabled || !r.gameObject.activeInHierarchy || r is ParticleSystemRenderer) continue;
+                var sz = r.bounds.size;
+                if (sz.x < 0.03f || sz.z < 0.03f) continue; // door fronts, book quads, pictures: vertical faces, not feet
                 if (b == null) b = r.bounds; else { var x = b.Value; x.Encapsulate(r.bounds); b = x; }
             }
             return b;
@@ -95,6 +97,9 @@ namespace ThirdLamp.Qa
         {
             foreach (var g in PropGroups())
             {
+                bool solid = false;
+                foreach (var c in g.GetComponentsInChildren<Collider>()) if (c.enabled && !c.isTrigger) { solid = true; break; }
+                if (!solid) continue; // decorative quads and wall pieces
                 var b = RenderBounds(g);
                 if (b == null) continue;
                 var bb = b.Value;
@@ -167,6 +172,7 @@ namespace ThirdLamp.Qa
                         if (quad) coord = bb.center[axis];
                         int a1 = (axis + 1) % 3, a2 = (axis + 2) % 3;
                         var rect = Rect.MinMaxRect(bb.min[a1], bb.min[a2], bb.max[a1], bb.max[a2]);
+                        if (Covered(axis, s, coord, rect)) continue; // against a floor, wall or another solid: never seen
                         var f = new Face { axis = axis, sign = s, coord = coord, rect = rect, mat = r.sharedMaterial, t = t };
                         var key = (axis * 2 + (s > 0 ? 1 : 0), Mathf.RoundToInt(coord * 1000f), 0);
                         if (!buckets.TryGetValue(key, out var list)) buckets[key] = list = new List<Face>();
@@ -184,7 +190,8 @@ namespace ThirdLamp.Qa
                     for (int j = 0; j < near.Count; j++)
                     {
                         var a = list[i]; var b = near[j];
-                        if (a.t == b.t || a.mat == b.mat || Mathf.Abs(a.coord - b.coord) > 0.0012f) continue;
+                        if (a.t == b.t || Mathf.Abs(a.coord - b.coord) > 0.0012f) continue;
+                        if (a.mat == b.mat || (a.mat != null && b.mat != null && a.mat.mainTexture == b.mat.mainTexture && a.mat.color == b.mat.color)) continue;
                         if (!a.rect.Overlaps(b.rect)) continue;
                         var ov = Rect.MinMaxRect(Mathf.Max(a.rect.xMin, b.rect.xMin), Mathf.Max(a.rect.yMin, b.rect.yMin), Mathf.Min(a.rect.xMax, b.rect.xMax), Mathf.Min(a.rect.yMax, b.rect.yMax));
                         if (ov.width * ov.height < 0.0004f) continue;
@@ -194,31 +201,58 @@ namespace ThirdLamp.Qa
             }
         }
 
+        /// <summary>True if a thin slab just in front of the face overlaps any solid, i.e. the face can't be seen.</summary>
+        static bool Covered(int axis, int sign, float coord, Rect rect)
+        {
+            int a1 = (axis + 1) % 3, a2 = (axis + 2) % 3;
+            var centre = Vector3.zero; var half = Vector3.zero;
+            centre[axis] = coord + sign * 0.004f; half[axis] = 0.002f;
+            centre[a1] = rect.center.x; half[a1] = Mathf.Max(0.001f, rect.width * 0.45f);
+            centre[a2] = rect.center.y; half[a2] = Mathf.Max(0.001f, rect.height * 0.45f);
+            return Physics.CheckBox(centre, half, Quaternion.identity, ~(1 << Game.LayerIgnoreRaycast), QueryTriggerInteraction.Ignore);
+        }
+
         static bool Axis(float deg) { float m = Mathf.Repeat(deg, 90f); return m < 0.5f || m > 89.5f; }
 
         /// <summary>Solid props pushing into each other or into walls by more than 3 cm.</summary>
         void Interpenetration()
         {
-            var cols = new List<Collider>();
+            // Only props against the house shell (walls, floors) and props of different rooms: pieces of one
+            // piece of furniture are built to overlap. Capsules squashed below 2r (thin Cyl discs) are skipped:
+            // Unity turns them into spheres that report false depth.
+            var cols = new HashSet<Collider>();
             foreach (var c in world.GetComponentsInChildren<Collider>())
-                if (c.enabled && !c.isTrigger && c.gameObject.activeInHierarchy && c.GetComponentInParent<Openable>() == null) cols.Add(c);
+            {
+                if (!c.enabled || c.isTrigger || !c.gameObject.activeInHierarchy || c.GetComponentInParent<Openable>() != null) continue;
+                if (c is CapsuleCollider cap && cap.height < 2f * cap.radius) continue;
+                cols.Add(c);
+            }
             var seen = new HashSet<(Collider, Collider)>();
             foreach (var a in cols)
             {
+                if (a.bounds.size.x > 20f || a.bounds.size.z > 20f) continue; // ground, ceiling
                 var ta = TopGroup(a.transform);
+                var roomA = Room(a.transform);
                 foreach (var b in Physics.OverlapBox(a.bounds.center, a.bounds.extents, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
                 {
                     if (b == a || !cols.Contains(b)) continue;
                     var tb = TopGroup(b.transform);
                     if (ta == tb) continue;
-                    bool aHouse = ta.parent != null && ta.parent.name == "House" || ta.name.StartsWith("Wall_") || ta.name.StartsWith("Floor_");
-                    bool bHouse = tb.parent != null && tb.parent.name == "House" || tb.name.StartsWith("Wall_") || tb.name.StartsWith("Floor_");
+                    var roomB = Room(b.transform);
+                    bool aHouse = roomA == "House", bHouse = roomB == "House";
                     if (aHouse && bHouse) continue;
+                    if (!aHouse && !bHouse && roomA == roomB) continue;
                     if (!seen.Add((a, b)) || seen.Contains((b, a))) continue;
                     if (Physics.ComputePenetration(a, a.transform.position, a.transform.rotation, b, b.transform.position, b.transform.rotation, out _, out var depth) && depth > 0.03f)
                         AddFinding(depth > 0.1f ? "error" : "warning", "interpenetration", $"{depth * 100f:0} cm into `{QaUtil.PathOf(b.transform)}`.", a.transform, a.bounds.center);
                 }
             }
+        }
+
+        string Room(Transform t)
+        {
+            while (t.parent != null && t.parent != world) t = t.parent;
+            return t.name;
         }
 
         Transform TopGroup(Transform t)
@@ -264,8 +298,9 @@ namespace ThirdLamp.Qa
             for (int x = 0; x < w; x++)
                 for (int z = 0; z < h; z++)
                 {
-                    var p = new Vector3(RX0 + (x + 0.5f) * RC, 2.5f, RZ0 + (z + 0.5f) * RC);
-                    if (!Physics.Raycast(p, Vector3.down, out var down, 3.5f, mask, QueryTriggerInteraction.Ignore) || down.point.y > 0.35f) { state[x, z] = -1; continue; }
+                    // from just under head height, so low roofs (the shed) don't read as solid ground
+                    var p = new Vector3(RX0 + (x + 0.5f) * RC, 1.9f, RZ0 + (z + 0.5f) * RC);
+                    if (!Physics.Raycast(p, Vector3.down, out var down, 3f, mask, QueryTriggerInteraction.Ignore) || down.point.y > 0.35f) { state[x, z] = -1; continue; }
                     floor[x, z] = down.point.y;
                     var f = down.point;
                     bool blocked = false;

@@ -194,7 +194,7 @@ set it to 1920×1080, and leave the mouse still.
 |---|---|---|
 | **Level Lint** | Hovering props, decals or pictures hanging over openings, z-fighting faces, props pushing into each other, blocked doorways, interactables the player can't reach, unregistered event ids, missing texture slots | `QA/latest_lint/report.md`, `reachability.png` |
 | **Bot Playthrough** | Plays the whole critical path through the real game logic, from the key under the pot to the ending. Then forces each late-night scare and checks that it fires and changes the world. Each step passes or fails with its time; failures are screenshotted | `QA/latest_bot/report.md` + shots |
-| **Monkey** | A seeded random explorer walks, pokes everything, flips lights, torch, lamp and power, and escapes every screen. Reports exceptions, stuck spots, falls out of bounds and soft-locks | `QA/latest_monkey/report.md`, `coverage.png` |
+| **Monkey** | A seeded random explorer walks, pokes everything, flips lights, torch, lamp and power, and escapes every screen. Reports exceptions, stuck spots, falls out of bounds and soft-locks | `QA/latest_monkey_<seed>/report.md`, `coverage.png` |
 | **Capture Screenshots** | 30+ first-person views as found, with lights, with the torch, in the later-night scare states, and under the lamp. Records luminance per shot, flags shots that are too dark or too bright, and makes a contact sheet. After **Set Screenshot Baseline**, it also saves per-shot diffs | `Screenshots/`, `metrics.md`, `_sheet.png`, `diff/` |
 
 Every report also lists the exceptions and `[ThirdLamp]` warnings it caught, and the narrative events
@@ -206,7 +206,7 @@ For unattended runs:
 Unity -projectPath . -executeMethod ThirdLamp.EditorTools.QaMenu.RunAllBatch
 ```
 
-Leave out `-quit` and `-nographics`. The editor exits when the queue finishes.
+Leave out `-quit` and `-nographics`. The editor exits when the queue finishes, with code 1 if anything failed. Captures need a rendering Game view, so batch mode must run with graphics. Your own checkpoint save is set aside during QA and restored afterwards.
 
 ## Status and scope
 

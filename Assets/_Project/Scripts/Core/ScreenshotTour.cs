@@ -65,8 +65,24 @@ namespace ThirdLamp
             new Shot("23_lamp_great_mark", new Vector3(50f, 0, 7f), 90f, 3f, Light3.Lamp),
         };
 
+        float started;
+
+        void Update()
+        {
+            // a hidden Game view never renders, so WaitForEndOfFrame would wait forever
+            if (started > 0f && Time.realtimeSinceStartup - started > 420f)
+            {
+                Debug.LogWarning("[ThirdLamp] Screenshot tour timed out. Is the Game view visible?");
+                Qa.QaQueue.MarkFailed();
+                started = -1f;
+                Qa.QaQueue.Finish();
+            }
+        }
+
         IEnumerator Start()
         {
+            started = Time.realtimeSinceStartup;
+            DontDestroyOnLoad(gameObject);
             yield return null;
             yield return null;
 
@@ -88,7 +104,7 @@ namespace ThirdLamp
             string baseDir = Path.Combine(OutputDir, "baseline"), diffDir = Path.Combine(OutputDir, "diff");
             if (Directory.Exists(diffDir)) Directory.Delete(diffDir, true);
             var metrics = new MetricsFile();
-            var thumbs = new List<Color[]>();
+            var thumbs = new List<Color32[]>();
             int saved = 0;
             var written = new List<string>();
 
@@ -111,9 +127,10 @@ namespace ThirdLamp
                     File.WriteAllBytes(file, tex.EncodeToPNG());
                     var m = Measure(tex, look);
                     m.shot = Path.GetFileName(file);
-                    Compare(tex, Path.Combine(baseDir, m.shot), Path.Combine(diffDir, m.shot), m);
+                    var thumb = Thumb(tex);
+                    Compare(thumb, Path.Combine(baseDir, m.shot), Path.Combine(diffDir, m.shot), m);
                     metrics.shots.Add(m);
-                    thumbs.Add(Thumb(tex));
+                    thumbs.Add(thumb);
                     Destroy(tex);
                     written.Add(Path.GetFileName(file));
                     saved++;
@@ -129,7 +146,7 @@ namespace ThirdLamp
 
         // ------------------------------------------------------------------ metrics, sheet, diff
 
-        [System.Serializable] public class ShotMetrics { public string shot, look, verdict; public float meanLuminance, darkPercent, clippedPercent, diffPercent = -1f; }
+        [System.Serializable] public class ShotMetrics { public string shot, look, verdict, diffNote; public float meanLuminance, darkPercent, clippedPercent, diffPercent = -1f; }
         [System.Serializable] public class MetricsFile { public List<ShotMetrics> shots = new List<ShotMetrics>(); }
 
         /// <summary>Acceptable mean-luminance band per lighting state, before the image reads as unplayable.</summary>
@@ -160,53 +177,58 @@ namespace ThirdLamp
             return m;
         }
 
-        static void Compare(Texture2D now, string basePath, string diffPath, ShotMetrics m)
+        /// <summary>
+        /// Compares at thumbnail size, where film grain and bulb flicker average out, so only real
+        /// changes (moved props, new textures, lighting) register.
+        /// </summary>
+        static void Compare(Color32[] now, string basePath, string diffPath, ShotMetrics m)
         {
             if (!File.Exists(basePath)) return;
             var old = new Texture2D(2, 2);
-            if (!old.LoadImage(File.ReadAllBytes(basePath)) || old.width != now.width || old.height != now.height) { Destroy(old); return; }
-            var a = now.GetPixels32(); var b = old.GetPixels32();
-            var d = new Color32[a.Length];
+            if (!old.LoadImage(File.ReadAllBytes(basePath))) { Destroy(old); return; }
+            var b = Thumb(old);
+            Destroy(old);
+            var d = new Color32[now.Length];
             int changed = 0;
-            for (int i = 0; i < a.Length; i++)
+            for (int i = 0; i < now.Length; i++)
             {
-                int delta = Mathf.Max(Mathf.Abs(a[i].r - b[i].r), Mathf.Max(Mathf.Abs(a[i].g - b[i].g), Mathf.Abs(a[i].b - b[i].b)));
-                byte g = (byte)((a[i].r + a[i].g + a[i].b) / 9);
-                if (delta > 25) { changed++; d[i] = new Color32(255, 30, 30, 255); }
+                int delta = Mathf.Max(Mathf.Abs(now[i].r - b[i].r), Mathf.Max(Mathf.Abs(now[i].g - b[i].g), Mathf.Abs(now[i].b - b[i].b)));
+                byte g = (byte)((now[i].r + now[i].g + now[i].b) / 9);
+                if (delta > 40) { changed++; d[i] = new Color32(255, 30, 30, 255); }
                 else d[i] = new Color32(g, g, g, 255);
             }
-            m.diffPercent = 100f * changed / a.Length;
-            var dt = new Texture2D(now.width, now.height, TextureFormat.RGBA32, false);
+            m.diffPercent = 100f * changed / now.Length;
+            if (Mathf.Abs((float)Screen.width / Screen.height - (float)TW / TH) > 0.02f) m.diffNote = "Game view is not 16:9; set 1920×1080";
+            var dt = new Texture2D(TW, TH, TextureFormat.RGBA32, false);
             dt.SetPixels32(d);
             dt.Apply();
             Directory.CreateDirectory(Path.GetDirectoryName(diffPath));
             File.WriteAllBytes(diffPath, dt.EncodeToPNG());
             Destroy(dt);
-            Destroy(old);
         }
 
         const int TW = 384, TH = 216, Cols = 4;
 
-        static Color[] Thumb(Texture2D tex)
+        static Color32[] Thumb(Texture2D tex)
         {
-            var c = new Color[TW * TH];
+            var c = new Color32[TW * TH];
             for (int y = 0; y < TH; y++)
                 for (int x = 0; x < TW; x++)
                     c[y * TW + x] = tex.GetPixelBilinear((x + 0.5f) / TW, (y + 0.5f) / TH);
             return c;
         }
 
-        static Texture2D Sheet(List<Color[]> thumbs)
+        static Texture2D Sheet(List<Color32[]> thumbs)
         {
             int rows = Mathf.Max(1, (thumbs.Count + Cols - 1) / Cols);
-            var sheet = new Texture2D(Cols * TW, rows * TH, TextureFormat.RGB24, false);
-            var bg = new Color[sheet.width * sheet.height];
-            for (int i = 0; i < bg.Length; i++) bg[i] = new Color(0.1f, 0.1f, 0.1f);
-            sheet.SetPixels(bg);
+            var sheet = new Texture2D(Cols * TW, rows * TH, TextureFormat.RGBA32, false);
+            var bg = new Color32[sheet.width * sheet.height];
+            for (int i = 0; i < bg.Length; i++) bg[i] = new Color32(25, 25, 25, 255);
+            sheet.SetPixels32(bg);
             for (int i = 0; i < thumbs.Count; i++)
             {
                 int col = i % Cols, row = rows - 1 - i / Cols; // first shot top-left
-                sheet.SetPixels(col * TW, row * TH, TW, TH, thumbs[i]);
+                sheet.SetPixels32(col * TW, row * TH, TW, TH, thumbs[i]);
             }
             sheet.Apply();
             return sheet;
@@ -216,7 +238,7 @@ namespace ThirdLamp
         {
             var sb = new System.Text.StringBuilder("# Screenshot metrics\n\n| Shot | Look | Mean lum. | Black % | Clipped % | Verdict | Changed vs baseline |\n|---|---|---|---|---|---|---|\n");
             foreach (var m in f.shots)
-                sb.AppendLine($"| {m.shot} | {m.look} | {m.meanLuminance:0.000} | {m.darkPercent:0} | {m.clippedPercent:0.0} | {(m.verdict == "ok" ? "ok" : "⚠ " + m.verdict)} | {(m.diffPercent < 0 ? "–" : m.diffPercent.ToString("0.0") + "%")} |");
+                sb.AppendLine($"| {m.shot} | {m.look} | {m.meanLuminance:0.000} | {m.darkPercent:0} | {m.clippedPercent:0.0} | {(m.verdict == "ok" ? "ok" : "⚠ " + m.verdict)} | {(m.diffPercent < 0 ? "–" : m.diffPercent.ToString("0.0") + "%")}{(string.IsNullOrEmpty(m.diffNote) ? "" : " (" + m.diffNote + ")")} |");
             return sb.ToString();
         }
 

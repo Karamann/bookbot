@@ -308,7 +308,7 @@ namespace ThirdLamp
             photo.localPosition = new Vector3(0.2f, 1.6f, 6.115f);
             photo.localRotation = Quaternion.LookRotation(Vector3.back);
             Box("Frame", Vector3.zero, new Vector3(0.4f, 0.3f, 0.025f), Mats.Color(new Color(0.12f, 0.1f, 0.08f), 0.4f), photo);
-            var photoQuad = Prim(PrimitiveType.Quad, "Photo", new Vector3(0, 0, -0.014f), new Vector3(0.34f, 0.25f, 1f), Mats.Lit("family_photo", Color.white, 0.4f), photo, false);
+            var photoQuad = Prim(PrimitiveType.Quad, "Photo", new Vector3(0, 0, -0.016f), new Vector3(0.34f, 0.25f, 1f), Mats.Lit("family_photo", Color.white, 0.4f), photo, false);
             var photoStates = photo.gameObject.AddComponent<MaterialStates>();
             photoStates.target = photoQuad.GetComponent<Renderer>();
             photoStates.Add("normal", Mats.Lit("family_photo", Color.white, 0.4f));
