@@ -35,3 +35,7 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 __pycache__/
+
+# QA: keep only the latest report of each kind; timestamped runs stay local
+/QA/*
+!/QA/latest_*/

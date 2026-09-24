@@ -20,6 +20,10 @@ namespace ThirdLamp
         public Vector3 PlayerStart = new Vector3(-2.7f, 0f, -13.2f);
         public float PlayerStartYaw = 8f;
 
+        /// <summary>Door openings as built (for QA doorway checks): centre at floor level, wall axis, width, height.</summary>
+        public struct Opening { public Vector3 centre; public bool alongX; public float width, top; public string wall; }
+        public static readonly List<Opening> Openings = new List<Opening>();
+
         public VillaBuilder(Transform root)
         {
             this.root = root;
@@ -28,6 +32,7 @@ namespace ThirdLamp
 
         public void Build()
         {
+            Openings.Clear();
             Environment();
             Grounds();
             Shell();
@@ -137,7 +142,12 @@ namespace ThirdLamp
                     WindowFrame(g.transform, alongX, a0 + op.center, fixedC, op);
                     WindowDressing(g.transform, alongX, a0 + op.center, fixedC, op, !interior);
                 }
-                else DoorCasing(g.transform, alongX, a0 + op.center, fixedC, op);
+                else
+                {
+                    DoorCasing(g.transform, alongX, a0 + op.center, fixedC, op);
+                    float oc = a0 + op.center;
+                    Openings.Add(new Opening { centre = alongX ? new Vector3(oc, 0, fixedC) : new Vector3(fixedC, 0, oc), alongX = alongX, width = op.width, top = op.top, wall = name });
+                }
             }
             Piece(cursor, a1, 0f, WallH);
             return g;

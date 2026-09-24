@@ -9,13 +9,12 @@ using UnityEngine;
 namespace ThirdLamp
 {
     /// <summary>
-    /// Editor-only screenshot tour. Started from Tools › The Third Lamp › Capture Screenshots: enters
+    /// Editor-only screenshot tour. Started from Tools › The Third Lamp › QA › Capture Screenshots (via the QA queue): enters
     /// Play mode, skips the intro, then teleports the player through fixed viewpoints and saves the Game
     /// view (HUD included) under several lighting states to &lt;project&gt;/Screenshots/.
     /// </summary>
     public class ScreenshotTour : MonoBehaviour
     {
-        public const string PendingKey = "ThirdLamp.ScreenshotTour.Pending";
         public static string OutputDir => Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Screenshots"));
 
         enum Light3 { AsFound, Lights, Torch, Lamp, Scare }
@@ -66,28 +65,13 @@ namespace ThirdLamp
             new Shot("23_lamp_great_mark", new Vector3(50f, 0, 7f), 90f, 3f, Light3.Lamp),
         };
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        static void MaybeStart()
-        {
-            if (!SessionState.GetBool(PendingKey, false)) return;
-            SessionState.SetBool(PendingKey, false);
-            if (FindAnyObjectByType<SliceBootstrap>() == null)
-            {
-                Debug.LogWarning("[ThirdLamp] Screenshot tour needs the Slice scene.");
-                return;
-            }
-            new GameObject("ScreenshotTour").AddComponent<ScreenshotTour>();
-        }
-
         IEnumerator Start()
         {
             yield return null;
             yield return null;
 
             // no intro, no clock, no scripted events firing while we teleport around
-            Game.Fx.StopAllCoroutines();
-            Game.Fx.SkipIntro();
-            Game.Mode = InputMode.Play;
+            Qa.QaUtil.SkipIntro();
             Game.State.clockRunning = false;
             Game.Director.enabled = false;
 
@@ -98,9 +82,13 @@ namespace ThirdLamp
             var asFound = Game.Lighting.SwitchedOnGroups();
             var torch = Game.Player.GetComponent<Torch>();
             var lamp = FindAnyObjectByType<OilLamp>();
-            var pitchField = typeof(PlayerController).GetField("pitch", BindingFlags.NonPublic | BindingFlags.Instance);
 
             Directory.CreateDirectory(OutputDir);
+            foreach (var old in Directory.GetFiles(OutputDir, "*.png")) File.Delete(old);
+            string baseDir = Path.Combine(OutputDir, "baseline"), diffDir = Path.Combine(OutputDir, "diff");
+            if (Directory.Exists(diffDir)) Directory.Delete(diffDir, true);
+            var metrics = new MetricsFile();
+            var thumbs = new List<Color[]>();
             int saved = 0;
             var written = new List<string>();
 
@@ -111,9 +99,7 @@ namespace ThirdLamp
                 {
                     if (look == Light3.Scare && !scaresForced) { ForceScares(); scaresForced = true; }
                     SetLights(look, asFound, torch, lamp);
-                    Game.Player.Teleport(shot.feet, shot.yaw);
-                    pitchField?.SetValue(Game.Player, shot.pitch);
-                    Game.Player.CameraPivot.localRotation = Quaternion.Euler(shot.pitch, 0, 0);
+                    Qa.QaUtil.Teleport(shot.feet, shot.yaw, shot.pitch);
 
                     // let lighting mode, fog and flicker settle
                     for (int i = 0; i < 8; i++) yield return null;
@@ -123,15 +109,115 @@ namespace ThirdLamp
                     var tex = ScreenCapture.CaptureScreenshotAsTexture();
                     var file = Path.Combine(OutputDir, $"{shot.name}__{look.ToString().ToLowerInvariant()}.png");
                     File.WriteAllBytes(file, tex.EncodeToPNG());
+                    var m = Measure(tex, look);
+                    m.shot = Path.GetFileName(file);
+                    Compare(tex, Path.Combine(baseDir, m.shot), Path.Combine(diffDir, m.shot), m);
+                    metrics.shots.Add(m);
+                    thumbs.Add(Thumb(tex));
                     Destroy(tex);
                     written.Add(Path.GetFileName(file));
                     saved++;
                 }
             }
 
+            File.WriteAllText(Path.Combine(OutputDir, "metrics.json"), JsonUtility.ToJson(metrics, true));
+            File.WriteAllText(Path.Combine(OutputDir, "metrics.md"), MetricsMarkdown(metrics));
+            File.WriteAllBytes(Path.Combine(OutputDir, "_sheet.png"), Sheet(thumbs).EncodeToPNG());
             Debug.Log($"[ThirdLamp] Saved {saved} screenshots to {OutputDir}\n" + string.Join("\n", written));
-            EditorUtility.RevealInFinder(OutputDir);
-            EditorApplication.isPlaying = false;
+            Qa.QaQueue.Finish();
+        }
+
+        // ------------------------------------------------------------------ metrics, sheet, diff
+
+        [System.Serializable] public class ShotMetrics { public string shot, look, verdict; public float meanLuminance, darkPercent, clippedPercent, diffPercent = -1f; }
+        [System.Serializable] public class MetricsFile { public List<ShotMetrics> shots = new List<ShotMetrics>(); }
+
+        /// <summary>Acceptable mean-luminance band per lighting state, before the image reads as unplayable.</summary>
+        static Vector2 Band(Light3 look) => look switch
+        {
+            Light3.Lights => new Vector2(0.06f, 0.5f),
+            Light3.Scare => new Vector2(0.06f, 0.5f),
+            Light3.Torch => new Vector2(0.03f, 0.5f),
+            Light3.Lamp => new Vector2(0.015f, 0.35f),
+            _ => new Vector2(0.01f, 0.5f),
+        };
+
+        static ShotMetrics Measure(Texture2D tex, Light3 look)
+        {
+            var px = tex.GetPixels32();
+            double sum = 0; int dark = 0, clip = 0, n = 0;
+            for (int i = 0; i < px.Length; i += 7)
+            {
+                var c = px[i];
+                float l = (0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b) / 255f;
+                sum += l; n++;
+                if (l < 0.02f) dark++;
+                if (l > 0.97f) clip++;
+            }
+            var m = new ShotMetrics { look = look.ToString().ToLowerInvariant(), meanLuminance = (float)(sum / n), darkPercent = 100f * dark / n, clippedPercent = 100f * clip / n };
+            var band = Band(look);
+            m.verdict = m.meanLuminance < band.x ? "too dark" : m.meanLuminance > band.y ? "too bright" : m.darkPercent > 85f ? "mostly black" : "ok";
+            return m;
+        }
+
+        static void Compare(Texture2D now, string basePath, string diffPath, ShotMetrics m)
+        {
+            if (!File.Exists(basePath)) return;
+            var old = new Texture2D(2, 2);
+            if (!old.LoadImage(File.ReadAllBytes(basePath)) || old.width != now.width || old.height != now.height) { Destroy(old); return; }
+            var a = now.GetPixels32(); var b = old.GetPixels32();
+            var d = new Color32[a.Length];
+            int changed = 0;
+            for (int i = 0; i < a.Length; i++)
+            {
+                int delta = Mathf.Max(Mathf.Abs(a[i].r - b[i].r), Mathf.Max(Mathf.Abs(a[i].g - b[i].g), Mathf.Abs(a[i].b - b[i].b)));
+                byte g = (byte)((a[i].r + a[i].g + a[i].b) / 9);
+                if (delta > 25) { changed++; d[i] = new Color32(255, 30, 30, 255); }
+                else d[i] = new Color32(g, g, g, 255);
+            }
+            m.diffPercent = 100f * changed / a.Length;
+            var dt = new Texture2D(now.width, now.height, TextureFormat.RGBA32, false);
+            dt.SetPixels32(d);
+            dt.Apply();
+            Directory.CreateDirectory(Path.GetDirectoryName(diffPath));
+            File.WriteAllBytes(diffPath, dt.EncodeToPNG());
+            Destroy(dt);
+            Destroy(old);
+        }
+
+        const int TW = 384, TH = 216, Cols = 4;
+
+        static Color[] Thumb(Texture2D tex)
+        {
+            var c = new Color[TW * TH];
+            for (int y = 0; y < TH; y++)
+                for (int x = 0; x < TW; x++)
+                    c[y * TW + x] = tex.GetPixelBilinear((x + 0.5f) / TW, (y + 0.5f) / TH);
+            return c;
+        }
+
+        static Texture2D Sheet(List<Color[]> thumbs)
+        {
+            int rows = Mathf.Max(1, (thumbs.Count + Cols - 1) / Cols);
+            var sheet = new Texture2D(Cols * TW, rows * TH, TextureFormat.RGB24, false);
+            var bg = new Color[sheet.width * sheet.height];
+            for (int i = 0; i < bg.Length; i++) bg[i] = new Color(0.1f, 0.1f, 0.1f);
+            sheet.SetPixels(bg);
+            for (int i = 0; i < thumbs.Count; i++)
+            {
+                int col = i % Cols, row = rows - 1 - i / Cols; // first shot top-left
+                sheet.SetPixels(col * TW, row * TH, TW, TH, thumbs[i]);
+            }
+            sheet.Apply();
+            return sheet;
+        }
+
+        static string MetricsMarkdown(MetricsFile f)
+        {
+            var sb = new System.Text.StringBuilder("# Screenshot metrics\n\n| Shot | Look | Mean lum. | Black % | Clipped % | Verdict | Changed vs baseline |\n|---|---|---|---|---|---|---|\n");
+            foreach (var m in f.shots)
+                sb.AppendLine($"| {m.shot} | {m.look} | {m.meanLuminance:0.000} | {m.darkPercent:0} | {m.clippedPercent:0.0} | {(m.verdict == "ok" ? "ok" : "⚠ " + m.verdict)} | {(m.diffPercent < 0 ? "–" : m.diffPercent.ToString("0.0") + "%")} |");
+            return sb.ToString();
         }
 
         /// <summary>Puts every perception event into its "has happened" state, for review.</summary>

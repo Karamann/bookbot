@@ -31,11 +31,7 @@ assign it in *Project Settings › Graphics* and *Quality*. Without it the slice
 built-in pipeline, and a lighter IMGUI grain and vignette overlay is always on.
 For standalone builds, run **Tools › The Third Lamp › Include Runtime Shaders In Builds** once.
 
-**Screenshots:** **Tools › The Third Lamp › Capture Screenshots** plays the slice, skips the intro
-and walks the player through fixed viewpoints (grounds, every room, the later-night
-events, and the Third Lamp corridor). It saves what the Game view shows, HUD included, under several lighting states
-(`asfound`, `lights`, `torch`, `scare`, `lamp`) to `Screenshots/` in the project root, then stops Play mode.
-Set the Game view to 1920×1080 first, and leave the mouse still while it runs.
+Screenshots and automated tests are under **Tools › The Third Lamp › QA** (see *Testing*).
 
 ## Controls
 
@@ -187,6 +183,30 @@ Every sound is still synthesised. To replace sounds, drop clips into
 
 Bulbs also flicker more often as perception rises. Scares tighten the frame briefly
 (`UrpPostFx.Pulse`).
+
+## Testing
+
+Automated QA runs in the Unity editor from **Tools › The Third Lamp › QA**. Each run is one
+Play-mode session; **Run All** chains them, which takes about 20 minutes. Keep the Game view focused,
+set it to 1920×1080, and leave the mouse still.
+
+| Run | What it checks | Output |
+|---|---|---|
+| **Level Lint** | Hovering props, decals or pictures hanging over openings, z-fighting faces, props pushing into each other, blocked doorways, interactables the player can't reach, unregistered event ids, missing texture slots | `QA/latest_lint/report.md`, `reachability.png` |
+| **Bot Playthrough** | Plays the whole critical path through the real game logic, from the key under the pot to the ending. Then forces each late-night scare and checks that it fires and changes the world. Each step passes or fails with its time; failures are screenshotted | `QA/latest_bot/report.md` + shots |
+| **Monkey** | A seeded random explorer walks, pokes everything, flips lights, torch, lamp and power, and escapes every screen. Reports exceptions, stuck spots, falls out of bounds and soft-locks | `QA/latest_monkey/report.md`, `coverage.png` |
+| **Capture Screenshots** | 30+ first-person views as found, with lights, with the torch, in the later-night scare states, and under the lamp. Records luminance per shot, flags shots that are too dark or too bright, and makes a contact sheet. After **Set Screenshot Baseline**, it also saves per-shot diffs | `Screenshots/`, `metrics.md`, `_sheet.png`, `diff/` |
+
+Every report also lists the exceptions and `[ThirdLamp]` warnings it caught, and the narrative events
+that never fired. For review, commit `QA/latest_*` and `Screenshots/`; timestamped runs stay local.
+
+For unattended runs:
+
+```
+Unity -projectPath . -executeMethod ThirdLamp.EditorTools.QaMenu.RunAllBatch
+```
+
+Leave out `-quit` and `-nographics`. The editor exits when the queue finishes.
 
 ## Status and scope
 
