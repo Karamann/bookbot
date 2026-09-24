@@ -9,7 +9,7 @@ namespace ThirdLamp
     {
         static readonly Dictionary<string, Material> cache = new Dictionary<string, Material>();
 
-        static bool Urp => GraphicsSettings.currentRenderPipeline != null;
+        public static bool Urp => GraphicsSettings.currentRenderPipeline != null;
 
         public static Shader LitShader
         {
@@ -69,6 +69,104 @@ namespace ThirdLamp
             if (key != null) cache[key] = m;
             return m;
         }
+
+        /// <summary>Alpha-tested lit material: foliage, ghosts, cobwebs, curtains. Two-sided under URP.</summary>
+        public static Material Cutout(string texture, Color tint, float cutoff = 0.5f, float smoothness = 0.05f)
+        {
+            string key = $"cut|{texture}|{tint}|{cutoff}|{smoothness}";
+            if (cache.TryGetValue(key, out var m)) return m;
+            if (Urp)
+            {
+                m = new Material(LitShader);
+                m.SetFloat("_AlphaClip", 1f);
+                m.SetFloat("_Cull", 0f);
+                m.EnableKeyword("_ALPHATEST_ON");
+                m.SetOverrideTag("RenderType", "TransparentCutout");
+            }
+            else
+            {
+                var s = Shader.Find("Legacy Shaders/Transparent/Cutout/Diffuse");
+                m = new Material(s != null ? s : LitShader);
+            }
+            m.name = "cut_" + texture;
+            m.mainTexture = Tex.Get(texture);
+            m.color = tint;
+            m.SetFloat("_Cutoff", cutoff);
+            m.SetFloat("_Smoothness", smoothness);
+            m.SetFloat("_Metallic", 0f);
+            m.renderQueue = (int)RenderQueue.AlphaTest;
+            cache[key] = m;
+            return m;
+        }
+
+        /// <summary>Unlit, tinted texture for far backdrops (sky, hills) that should not depend on scene lights.</summary>
+        public static Material UnlitTinted(string texture, Color tint, bool cutout = false, float tileX = 1f)
+        {
+            string key = $"unlitt|{texture}|{tint}|{cutout}|{tileX}";
+            if (cache.TryGetValue(key, out var m)) return m;
+            if (cutout && !Urp)
+            {
+                var s = Shader.Find("Unlit/Transparent Cutout");
+                m = new Material(s != null ? s : UnlitShader);
+            }
+            else m = new Material(UnlitShader);
+            if (cutout && Urp)
+            {
+                m.SetFloat("_AlphaClip", 1f);
+                m.EnableKeyword("_ALPHATEST_ON");
+                m.SetOverrideTag("RenderType", "TransparentCutout");
+            }
+            if (cutout)
+            {
+                m.SetFloat("_Cutoff", 0.4f);
+                m.renderQueue = (int)RenderQueue.AlphaTest;
+            }
+            m.name = "unlitt_" + texture;
+            m.mainTexture = Tex.Get(texture);
+            m.mainTextureScale = new Vector2(tileX, 1f);
+            m.color = tint;
+            cache[key] = m;
+            return m;
+        }
+
+        /// <summary>Alpha-blended lit material with no depth write: stains, damp, dirt and glass.</summary>
+        public static Material Transparent(string texture, Color tint, float smoothness = 0.05f, int queueOffset = 0)
+        {
+            string key = $"tr|{texture}|{tint}|{smoothness}|{queueOffset}";
+            if (cache.TryGetValue(key, out var m)) return m;
+            if (Urp)
+            {
+                m = new Material(LitShader);
+                m.SetFloat("_Surface", 1f);
+                m.SetFloat("_Blend", 0f);
+                m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
+                m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_ZWrite", 0f);
+                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.SetOverrideTag("RenderType", "Transparent");
+            }
+            else
+            {
+                var s = Shader.Find("Legacy Shaders/Transparent/Diffuse");
+                m = new Material(s != null ? s : LitShader);
+            }
+            m.name = "tr_" + (texture ?? "color");
+            if (texture != null) m.mainTexture = Tex.Get(texture);
+            m.color = tint;
+            m.SetFloat("_Smoothness", smoothness);
+            m.SetFloat("_Metallic", 0f);
+            m.renderQueue = (int)RenderQueue.Transparent + queueOffset;
+            cache[key] = m;
+            return m;
+        }
+
+        /// <summary>Surface decal (stain, damp, footprint). Drawn on a quad a few millimetres off the surface.</summary>
+        public static Material Decal(string texture, Color tint) => Transparent(texture, tint, 0.05f, -50);
+
+        /// <summary>Tinted see-through glass.</summary>
+        public static Material Glass(Color tint) => Transparent(null, tint, 0.92f);
 
         public static void ClearCache() => cache.Clear();
     }

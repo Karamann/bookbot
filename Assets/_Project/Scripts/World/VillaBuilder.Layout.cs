@@ -31,6 +31,33 @@ namespace ThirdLamp
             moon.shadowStrength = 0.9f;
         }
 
+        /// <summary>Pale window-shaped patches of moonlight thrown onto the floor from outside.</summary>
+        void MoonShafts()
+        {
+            if (!Tex.Exists("window_cookie")) return;
+            var cookie = Tex.Get("window_cookie");
+            (Vector3 pos, Vector3 look)[] shafts =
+            {
+                (new Vector3(-10.2f, 3.6f, 3f), new Vector3(1f, -0.62f, 0f)),     // living, west window
+                (new Vector3(-5.5f, 3.4f, 16.2f), new Vector3(0f, -0.55f, -1f)),  // study, north window
+                (new Vector3(10.2f, 3.6f, 3f), new Vector3(-1f, -0.62f, 0f)),     // kitchen, east window
+            };
+            foreach (var (pos, look) in shafts)
+            {
+                var l = new GameObject("MoonShaft").AddComponent<Light>();
+                l.transform.SetParent(root, false);
+                l.transform.position = pos;
+                l.transform.rotation = Quaternion.LookRotation(look.normalized);
+                l.type = LightType.Spot;
+                l.spotAngle = 38f;
+                l.range = 9f;
+                l.intensity = 1.1f;
+                l.color = new Color(0.6f, 0.7f, 1f);
+                l.cookie = cookie;
+                l.shadows = LightShadows.None;
+            }
+        }
+
         void Grounds()
         {
             cur = Group("Grounds");
@@ -60,19 +87,51 @@ namespace ThirdLamp
                 g.localPosition = new Vector3(t.x, 0, t.y);
                 g.localRotation = Quaternion.Euler(0, r.Next(0, 360), 0);
                 Cyl("Trunk", new Vector3(0, 0.8f, 0), 0.32f, 1.6f, bark, g);
+                string canopy = r.Next(0, 2) == 0 ? "olive_canopy_a" : "olive_canopy_b";
+                if (Cross("Canopy", canopy, new Vector3(0, 0.9f, 0), 3.4f + (float)r.NextDouble() * 1.2f, 0f, g, new Color(0.75f, 0.78f, 0.75f)) != null) continue;
                 for (int i = 0; i < 4; i++)
                     Prim(PrimitiveType.Sphere, "Crown", new Vector3((float)(r.NextDouble() - 0.5) * 2f, 2.1f + (float)r.NextDouble() * 0.8f, (float)(r.NextDouble() - 0.5) * 2f),
                         Vector3.one * (1.6f + (float)r.NextDouble()), leaves, g, false);
             }
 
-            // distant hills and the glow of the city
-            var hill = Mats.UnlitColor(new Color(0.012f, 0.015f, 0.022f));
-            Prim(PrimitiveType.Sphere, "HillN", new Vector3(0, -20, 140), new Vector3(260, 70, 60), hill, null, false);
-            Prim(PrimitiveType.Sphere, "HillE", new Vector3(150, -25, 30), new Vector3(60, 70, 240), hill, null, false);
+            // cypresses along the north wall, dry weeds along every boundary
+            for (float x = -18f; x <= 18f; x += 4.5f)
+                Cross("Cypress", "cypress", new Vector3(x + (float)(r.NextDouble() - 0.5), 0, 22.6f), 6.5f + (float)r.NextDouble() * 1.5f, r.Next(0, 90), null, new Color(0.7f, 0.72f, 0.7f));
+            for (int i = 0; i < 36; i++)
+            {
+                float t = (float)r.NextDouble();
+                Vector3 p = (i % 4) switch
+                {
+                    0 => new Vector3(-20.5f, 0, Mathf.Lerp(-25f, 23f, t)),
+                    1 => new Vector3(19.5f, 0, Mathf.Lerp(-25f, 23f, t)),
+                    2 => new Vector3(Mathf.Lerp(-20f, 19f, t), 0, 23.5f),
+                    _ => new Vector3(Mathf.Lerp(-8.5f, 8.5f, t), 0, i % 8 == 3 ? -0.35f : 14.35f),
+                };
+                Cross("Weeds", "dry_weeds", p, 0.45f + (float)r.NextDouble() * 0.35f, r.Next(0, 90));
+            }
+
+            // distant hills (sprite ridge when generated, dark mounds otherwise) and the glow of the city
+            if (!Tex.Exists("hills_silhouette"))
+            {
+                var hill = Mats.UnlitColor(new Color(0.012f, 0.015f, 0.022f));
+                Prim(PrimitiveType.Sphere, "HillN", new Vector3(0, -20, 140), new Vector3(260, 70, 60), hill, null, false);
+                Prim(PrimitiveType.Sphere, "HillE", new Vector3(150, -25, 30), new Vector3(60, 70, 240), hill, null, false);
+            }
             Quad("CityGlow", new Vector3(-90, 8, -150), new Vector2(260, 40), new Vector3(0.5f, 0, -1f).normalized, Mats.Unlit("night_sky_glow"));
 
             // Second Lamp, later: someone outside the living-room window, looking in
-            Figure("apparition_window", new Vector3(-9.4f, -0.1f, 3f), 90f, false);
+            Figure("apparition_window", new Vector3(-9.4f, -0.1f, 3f), 90f, false, "figure_window_silhouette", 1.85f);
+
+            // Naked eye, much later: far out in the garden, pale, like someone who stepped out of a painting.
+            // Gone the moment it is looked at directly.
+            var garden = Sprite("GardenFigure", "figure_pale_robed", new Vector3(-17.5f, 0, 2.2f), 1.8f, true,
+                Mats.Cutout("figure_pale_robed", new Color(1.35f, 1.35f, 1.3f), 0.5f));
+            if (garden != null)
+            {
+                garden.AddComponent<Glimpse>().id = "garden";
+                Game.World.Register("garden_figure", garden);
+                garden.SetActive(false);
+            }
 
             Car();
             GeneratorShed();
@@ -80,7 +139,8 @@ namespace ThirdLamp
 
             // the blue pot with the key under it
             var pot = Cyl("BluePot", new Vector3(-5.15f, 0.12f, -0.55f), 0.45f, 0.45f, Mats.Color(new Color(0.12f, 0.25f, 0.55f), 0.6f));
-            Prim(PrimitiveType.Sphere, "Geranium", new Vector3(-5.15f, 0.48f, -0.55f), new Vector3(0.5f, 0.35f, 0.5f), Mats.Color(new Color(0.15f, 0.25f, 0.12f), 0.1f), null, false);
+            if (Cross("Geranium", "geranium", new Vector3(-5.15f, 0.3f, -0.55f), 0.55f, 20f) == null)
+                Prim(PrimitiveType.Sphere, "Geranium", new Vector3(-5.15f, 0.48f, -0.55f), new Vector3(0.5f, 0.35f, 0.5f), Mats.Color(new Color(0.15f, 0.25f, 0.12f), 0.1f), null, false);
             var potPick = pot.AddComponent<FlagPickup>();
             potPick.flag = "has_front_key";
             potPick.verb = "Lift";
@@ -97,15 +157,35 @@ namespace ThirdLamp
         {
             var g = Group("Car", cur);
             g.localPosition = new Vector3(-4.3f, 0, -13f);
-            var paint = Mats.Color(new Color(0.1f, 0.14f, 0.25f), 0.55f);
-            var glass = Mats.Color(new Color(0.03f, 0.04f, 0.05f), 0.9f);
+            var paint = Tex.Exists("car_paint") ? Mats.Lit("car_paint", Color.white, 0.55f, 2f, 2f) : Mats.Color(new Color(0.1f, 0.14f, 0.25f), 0.55f);
+            var glass = Mats.Glass(new Color(0.06f, 0.08f, 0.1f, 0.55f));
+            var trim = Mats.Color(new Color(0.06f, 0.06f, 0.06f), 0.3f);
+            var seat = Mats.Lit("fabric", new Color(0.35f, 0.35f, 0.38f), 0.05f);
             var tyre = Mats.Color(new Color(0.05f, 0.05f, 0.05f), 0.1f);
             Box("Body", new Vector3(0, 0.55f, 0), new Vector3(1.66f, 0.6f, 3.8f), paint, g);
             Box("Cabin", new Vector3(0, 1.1f, -0.2f), new Vector3(1.5f, 0.52f, 2.1f), glass, g);
             Box("Roof", new Vector3(0, 1.37f, -0.25f), new Vector3(1.46f, 0.04f, 1.8f), paint, g);
+            foreach (float x in new[] { -0.73f, 0.73f })
+                foreach (float z in new[] { -1.2f, 0.12f, 0.8f })
+                    Box("Pillar", new Vector3(x, 1.1f, z), new Vector3(0.05f, 0.52f, 0.06f), paint, g, false);
+            Box("BumperF", new Vector3(0, 0.36f, 1.93f), new Vector3(1.7f, 0.14f, 0.1f), trim, g, false);
+            Box("BumperR", new Vector3(0, 0.38f, -1.93f), new Vector3(1.7f, 0.14f, 0.1f), trim, g, false);
+            Box("PlateF", new Vector3(0, 0.36f, 1.985f), new Vector3(0.44f, 0.1f, 0.01f), Mats.Color(new Color(0.85f, 0.85f, 0.8f), 0.3f), g, false);
+            Box("PlateR", new Vector3(0, 0.5f, -1.915f), new Vector3(0.44f, 0.1f, 0.01f), Mats.Color(new Color(0.85f, 0.85f, 0.8f), 0.3f), g, false);
+            Box("Grille", new Vector3(0, 0.55f, 1.905f), new Vector3(0.7f, 0.12f, 0.02f), trim, g, false);
+            Box("SeatFL", new Vector3(-0.38f, 0.95f, 0.2f), new Vector3(0.5f, 0.12f, 0.5f), seat, g, false);
+            Box("SeatFR", new Vector3(0.38f, 0.95f, 0.2f), new Vector3(0.5f, 0.12f, 0.5f), seat, g, false);
+            Box("BackFL", new Vector3(-0.38f, 1.2f, -0.05f), new Vector3(0.5f, 0.5f, 0.1f), seat, g, false);
+            Box("BackFR", new Vector3(0.38f, 1.2f, -0.05f), new Vector3(0.5f, 0.5f, 0.1f), seat, g, false);
+            Box("RearSeat", new Vector3(0, 1.0f, -0.85f), new Vector3(1.3f, 0.35f, 0.45f), seat, g, false);
+            Box("Dash", new Vector3(0, 1.0f, 0.75f), new Vector3(1.4f, 0.14f, 0.3f), trim, g, false);
+            foreach (float x in new[] { -0.86f, 0.86f })
+                Box("Mirror", new Vector3(x, 1.02f, 0.72f), new Vector3(0.1f, 0.08f, 0.04f), trim, g, false);
             foreach (var p in new[] { new Vector3(-0.78f, 0.3f, 1.2f), new Vector3(0.78f, 0.3f, 1.2f), new Vector3(-0.78f, 0.3f, -1.2f), new Vector3(0.78f, 0.3f, -1.2f) })
                 Prim(PrimitiveType.Cylinder, "Wheel", p, new Vector3(0.58f, 0.1f, 0.58f), tyre, g, false, Quaternion.Euler(0, 0, 90));
             var lampMat = Mats.UnlitColor(new Color(1f, 0.95f, 0.8f));
+            // the cabin must not hide the seats behind an opaque block
+            g.Find("Cabin").GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             var tail = Mats.UnlitColor(new Color(0.5f, 0.02f, 0.02f));
             var lights = new System.Collections.Generic.List<Light>();
             foreach (float x in new[] { -0.55f, 0.55f })
@@ -137,7 +217,8 @@ namespace ThirdLamp
             TexBox("Slab", new Vector3(0, -0.05f, 0), new Vector3(2.6f, 0.1f, 2.2f), "stone", 1f, 0.05f, g);
             foreach (var p in new[] { new Vector3(-1.2f, 1.1f, -1f), new Vector3(1.2f, 1.1f, -1f), new Vector3(-1.2f, 1.1f, 1f), new Vector3(1.2f, 1.1f, 1f) })
                 Box("Post", p, new Vector3(0.1f, 2.2f, 0.1f), wood, g);
-            Box("Roof", new Vector3(0, 2.25f, 0), new Vector3(2.8f, 0.08f, 2.4f), Mats.Color(new Color(0.35f, 0.32f, 0.3f), 0.2f), g, true, Quaternion.Euler(0, 0, 6));
+            var roofMat = Tex.Exists("corrugated_iron") ? Mats.Lit("corrugated_iron", Color.white, 0.25f, 2f, 2f) : Mats.Color(new Color(0.35f, 0.32f, 0.3f), 0.2f);
+            Box("Roof", new Vector3(0, 2.25f, 0), new Vector3(2.8f, 0.08f, 2.4f), roofMat, g, true, Quaternion.Euler(0, 0, 6));
             Box("BackWall", new Vector3(1.25f, 1.0f, 0), new Vector3(0.06f, 2.0f, 2.1f), wood, g);
 
             var gen = Box("Generator", new Vector3(0.2f, 0.35f, 0), new Vector3(0.6f, 0.55f, 0.9f), Mats.Color(new Color(0.55f, 0.1f, 0.06f), 0.4f), g);

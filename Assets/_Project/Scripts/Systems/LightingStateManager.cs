@@ -145,6 +145,46 @@ namespace ThirdLamp
             flicker = null;
         }
 
+        // ---- ambient flicker: bulbs that aren't quite right, more often as perception rises ----
+        float nextAmbientFlicker = 30f;
+        static readonly float[][] AmbientPatterns =
+        {
+            new[] { 0.55f, 1f, 0.7f, 1f },
+            new[] { 0.2f, 0.9f, 0.1f, 0.6f, 1f },
+            new[] { 0.85f, 0.6f, 0.9f, 0.4f, 0.95f, 1f },
+        };
+
+        void AmbientFlicker()
+        {
+            if (Game.Perception == null || !PowerOn || flicker != null || Mode == LampMode.Mind) return;
+            if (Time.time < nextAmbientFlicker) return;
+            int stage = Game.Perception.Stage;
+            float min = Mathf.Lerp(55f, 9f, stage / 4f), max = Mathf.Lerp(90f, 20f, stage / 4f);
+            nextAmbientFlicker = Time.time + UnityEngine.Random.Range(min, max);
+            if (stage == 0) return;
+
+            // prefer the light the player is standing under
+            var zone = RoomZone.At(Game.Player != null ? Game.Player.transform.position : Vector3.zero);
+            LightGroup g = null;
+            if (zone != null && !string.IsNullOrEmpty(zone.lightGroup) && groups.TryGetValue(zone.lightGroup, out var here) && here.switchedOn) g = here;
+            if (g == null) foreach (var c in groups.Values) if (c.switchedOn) { g = c; break; }
+            if (g == null) return;
+            flicker = StartCoroutine(FlickerGroup(g, AmbientPatterns[UnityEngine.Random.Range(0, AmbientPatterns.Length)]));
+        }
+
+        IEnumerator FlickerGroup(LightGroup g, float[] pattern)
+        {
+            if (g.lights.Count > 0 && g.lights[0] != null)
+                Game.Audio.PlayAt("hum", g.lights[0].transform.position, 0.25f, 2.4f);
+            foreach (var p in pattern)
+            {
+                ApplyGroup(g, p);
+                yield return new WaitForSeconds(UnityEngine.Random.Range(0.04f, 0.11f));
+            }
+            ApplyGroup(g);
+            flicker = null;
+        }
+
         public bool IsDarkAt(Vector3 position)
         {
             var z = RoomZone.At(position);
@@ -156,6 +196,7 @@ namespace ThirdLamp
         void Update()
         {
             if (Game.Player == null) return;
+            AmbientFlicker();
             Vector3 p = Game.Player.transform.position;
             bool mind = lamp != null && lamp.Lit && lamp.IsNear(p) && (torch == null || !torch.On) && IsDarkAt(p);
             bool memory = Game.PhotoCamera != null && Game.PhotoCamera.IsRaised;

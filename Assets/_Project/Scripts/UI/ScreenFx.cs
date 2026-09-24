@@ -116,8 +116,10 @@ namespace ThirdLamp
             GUI.depth = -100;
             var full = new Rect(0, 0, Screen.width, Screen.height);
             bool mind = Game.Lighting != null && Game.Lighting.MindActive;
-            DrawVignette(full, mind ? 0.95f : 0.6f);
-            DrawGrain(full, mind ? 0.1f : 0.045f);
+            float pulse = UrpPostFx.PulseAmount;
+            DrawVignette(full, Mathf.Min(1f, (mind ? 0.95f : 0.65f) + pulse * 0.35f));
+            if (pulse > 0f) Hud.Fill(full, new Color(0, 0, 0, pulse * 0.22f));
+            DrawGrain(full, (mind ? 0.1f : 0.055f) + pulse * 0.05f);
             if (fade > 0f) Hud.Fill(full, new Color(0, 0, 0, fade));
             if (cardAlpha > 0f)
             {

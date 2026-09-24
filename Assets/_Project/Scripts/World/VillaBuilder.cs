@@ -37,6 +37,9 @@ namespace ThirdLamp
             Study();
             Bathroom();
             Storage();
+            Dress();
+            Backdrop();
+            MoonShafts();
             MindGeometry();
             Zones();
             Player();
@@ -107,6 +110,7 @@ namespace ThirdLamp
             var g = Group(name, cur).gameObject;
             bool alongX = Mathf.Approximately(z0, z1);
             float a0 = alongX ? x0 : z0, a1 = alongX ? x1 : z1, fixedC = alongX ? z0 : x0;
+            bool interior = tex == "plaster";
             var sorted = new List<Op>(ops);
             sorted.Sort((p, q) => p.center.CompareTo(q.center));
 
@@ -117,6 +121,7 @@ namespace ThirdLamp
                 var pos = alongX ? new Vector3(c, (y0 + y1) / 2f, fixedC) : new Vector3(fixedC, (y0 + y1) / 2f, c);
                 var size = alongX ? new Vector3(len, y1 - y0, T) : new Vector3(T, y1 - y0, len);
                 TexBox("Piece", pos, size, tex, 1.5f, 0.05f, g.transform);
+                if (y0 < 0.01f) SkirtingFor(g.transform, alongX, p0, p1, fixedC, interior);
             }
 
             float cursor = a0;
@@ -127,7 +132,12 @@ namespace ThirdLamp
                 Piece(s, e, 0f, op.bottom);
                 Piece(s, e, op.top, WallH);
                 cursor = e;
-                if (op.window) WindowFrame(g.transform, alongX, a0 + op.center, fixedC, op);
+                if (op.window)
+                {
+                    WindowFrame(g.transform, alongX, a0 + op.center, fixedC, op);
+                    WindowDressing(g.transform, alongX, a0 + op.center, fixedC, op, !interior);
+                }
+                else DoorCasing(g.transform, alongX, a0 + op.center, fixedC, op);
             }
             Piece(cursor, a1, 0f, WallH);
             return g;
@@ -145,9 +155,9 @@ namespace ThirdLamp
             Box("JambB", P(c + op.width / 2f - 0.025f, cy), S(0.05f, h, 0.08f), wood, parent, false);
             Box("Mullion", P(c, cy), S(0.04f, h, 0.06f), wood, parent, false);
             Box("Transom", P(c, op.bottom + h * 0.62f), S(op.width, 0.04f, 0.06f), wood, parent, false);
-            // Invisible pane blocks walking through but not sight.
-            var pane = Box("Pane", P(c, cy), S(op.width, h, 0.02f), wood, parent, true);
-            Object.Destroy(pane.GetComponent<Renderer>());
+            // Glass: blocks walking through but not sight or interaction rays.
+            var pane = Box("Pane", P(c, cy), S(op.width, h, 0.01f), Mats.Glass(new Color(0.5f, 0.56f, 0.6f, 0.16f)), parent, true);
+            pane.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             pane.layer = Game.LayerIgnoreRaycast;
         }
 
@@ -276,12 +286,24 @@ namespace ThirdLamp
             return n;
         }
 
-        /// <summary>Tall, still figure. Only visible to the lens and mirrors (Memory layer).</summary>
-        GameObject Figure(string id, Vector3 pos, float yaw, bool startActive)
+        /// <summary>
+        /// Tall, still figure. Only visible to the lens and mirrors (Memory layer). Uses a PixelLab cut-out
+        /// that always turns to face the player when the sprite exists; primitive stand-in otherwise.
+        /// </summary>
+        GameObject Figure(string id, Vector3 pos, float yaw, bool startActive, string sprite = "figure_dark_coat", float height = 1.9f)
         {
             var g = Group("Figure_" + id, cur);
             g.localPosition = pos;
             g.localRotation = Quaternion.Euler(0, yaw, 0);
+            if (Sprite("Cutout", sprite, Vector3.zero, height, true, Mats.Cutout(sprite, new Color(0.85f, 0.85f, 0.85f), 0.5f), g) != null)
+            {
+                SetLayerRecursive(g.gameObject, Game.LayerMemory);
+                var ap = g.gameObject.AddComponent<Apparition>();
+                ap.id = id;
+                Game.World.Register(id, g.gameObject);
+                g.gameObject.SetActive(startActive);
+                return g.gameObject;
+            }
             var coat = Mats.Color(new Color(0.07f, 0.065f, 0.06f), 0.05f);
             var skin = Mats.Color(new Color(0.62f, 0.58f, 0.52f), 0.1f);
             Prim(PrimitiveType.Capsule, "Body", new Vector3(0, 0.95f, 0), new Vector3(0.46f, 0.92f, 0.3f), coat, g, false);

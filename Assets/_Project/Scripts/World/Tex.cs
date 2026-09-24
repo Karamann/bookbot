@@ -31,6 +31,17 @@ namespace ThirdLamp
 
         public static void ClearCache() => cache.Clear();
 
+        /// <summary>True if the slot has a generated texture in Resources or a procedural generator.</summary>
+        public static bool Exists(string name)
+        {
+            if (cache.TryGetValue(name, out var t) && t != null) return true;
+            if (Generators.ContainsKey(name)) return true;
+            t = Resources.Load<Texture2D>("ThirdLamp/Textures/" + name);
+            if (t == null) return false;
+            cache[name] = t;
+            return true;
+        }
+
         static readonly Dictionary<string, Func<Texture2D>> Generators = new Dictionary<string, Func<Texture2D>>
         {
             { "plaster", () => Plaster(new Color(0.84f, 0.82f, 0.76f), 11) },

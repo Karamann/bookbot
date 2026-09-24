@@ -57,6 +57,7 @@ namespace ThirdLamp.EditorTools
             {
                 "Universal Render Pipeline/Lit", "Universal Render Pipeline/Unlit",
                 "Standard", "Unlit/Texture", "GUI/Text Shader",
+                "Legacy Shaders/Transparent/Cutout/Diffuse", "Legacy Shaders/Transparent/Diffuse", "Unlit/Transparent Cutout",
             };
             foreach (var n in names)
             {
